@@ -1,67 +1,57 @@
 # showcases
 
-Standalone single-page demo sites, one per project. Each site has its own
-build and its own deploy URL. They share a single template and one set of
-dependencies.
+One single-page app that serves a standalone showcase for every project at its
+own route. It builds to a single `dist` and deploys once. After deploy, a
+project's site is `<deploy-url>/<name>` (for example `<deploy-url>/codelens`).
 
 ## Layout
 
 ```
-packages/showcase/   shared Showcase component, theme, and ProjectData type
-sites/<name>/        a thin Vite app for one project
-scripts/generate.mjs scaffolds sites/<name>/ from the dataset
-scripts/build-all.mjs builds every site (used by CI)
+src/showcase/        shared Showcase template, theme tokens, and ProjectData type
+src/demos/           the interactive demo component for each project, plus its css
+src/styles/demo.css  shared demo styles used by the original demos
+src/data/projects.ts the full dataset of all projects as typed objects
+src/pages/           index grid, per-project showcase page, and not-found page
+src/App.tsx          the route table
+src/main.tsx         app entry, mounts the router and global styles
 ```
 
-This is an npm workspaces monorepo, so there is one `node_modules` at the root
-and every site links to the shared `@showcases/showcase` package.
+## Routes
 
-## A site
+- `/` renders an index grid of every project, linking to `/<name>`.
+- `/:name` renders the full standalone showcase for that project: the shared
+  template with the project's dataset entry and its demo as the centerpiece.
+- any other path renders a not-found page that links back to `/`.
 
-Each `sites/<name>/` is a small Vite app:
+Demos are loaded with `import.meta.glob('./demos/*.tsx', { eager: true })`,
+keyed by file basename, which matches the project name in the dataset.
 
-- `index.html` and `vite.config.ts` (base `/`)
-- `src/main.tsx` renders `<Showcase data={data} Demo={Demo} />`
-- `src/demo.tsx` the interactive demo for this project
-- `src/data.ts` the project's dataset entry as a typed object
-- `vercel.json` an SPA rewrite
-
-It builds on its own to its own `dist`.
-
-## Add a site
-
-The generator reads the dataset and writes a `sites/<name>/` from templates.
-
-```
-npm run generate -- <name>
-```
-
-You can pass several names at once. Re-running is safe; it overwrites the
-scaffolded files for those names.
-
-## Build a site
+## Develop
 
 ```
 npm install
-npm --workspace sites/<name> run build
+npm run dev
 ```
 
-The output is `sites/<name>/dist`. To build every site at once:
+## Build
 
 ```
-npm run build:sites
+npm install
+npm run build
 ```
 
-## Deploy a site
+The output is a single `dist`. `npm run lint` checks the whole tree.
 
-Each site deploys to its own URL with Vercel. From the site directory:
+## Deploy
+
+The app deploys once to one URL with Vercel. From the repository root:
 
 ```
-cd sites/<name>
 vercel deploy --prod
 ```
 
-The included `vercel.json` handles the single-page rewrite.
+The included `vercel.json` rewrites every path to `index.html` so deep links
+like `/<name>` resolve to the app.
 
 ## License
 
