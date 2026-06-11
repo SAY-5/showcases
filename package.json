@@ -9,7 +9,7 @@
     "sites/*"
   ],
   "scripts": {
-    "typecheck": "tsc --build --noEmit",
+    "typecheck": "node scripts/typecheck-all.mjs",
     "build:sites": "node scripts/build-all.mjs",
     "generate": "node scripts/generate.mjs"
   },
