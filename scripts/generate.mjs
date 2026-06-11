@@ -8,7 +8,7 @@
 //   - writes data.ts, main.tsx, demo wiring, index.html, vite.config.ts,
 //     vercel.json, tsconfig.json, and package.json from templates
 //
-// Re-running overwrites the generated files for those names, so it is safe to
+// Re-running overwrites the scaffolded files for those names, so it is safe to
 // run again after the dataset or a demo changes.
 
 import {
@@ -193,7 +193,7 @@ for (const name of names) {
   }
 
   made += 1;
-  console.log(`generated sites/${name}`);
+  console.log(`scaffolded sites/${name}`);
 }
 
 console.log(`\ndone: ${made} site(s)`);
