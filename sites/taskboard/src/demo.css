@@ -1,0 +1,133 @@
+.tb {
+  display: grid;
+  grid-template-columns: 1.7fr 1fr;
+  gap: 1.4rem;
+}
+
+.tb-board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.8rem;
+}
+
+.tb-col {
+  background: var(--ink-900);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+}
+
+.tb-col__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.6rem 0.7rem;
+  font-size: 0.74rem;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--line);
+}
+
+.tb-cursor {
+  font-size: 0.66rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  color: var(--ink-900);
+}
+
+.tb-cursor--mara {
+  background: var(--accent);
+}
+
+.tb-cursor--ada {
+  background: #4a8cff;
+}
+
+.tb-col__body {
+  flex: 1;
+  padding: 0.7rem;
+}
+
+.tb-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.7rem;
+  background: var(--ink-700);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+}
+
+.tb-card__title {
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.tb-card__meta {
+  font-size: 0.7rem;
+  color: var(--accent);
+}
+
+.tb-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.tb-run {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--ink-900);
+  background: var(--accent);
+  border: none;
+  border-radius: 999px;
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+}
+
+.tb-run:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.tb-feed {
+  flex: 1;
+  background: var(--ink-900);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.9rem;
+}
+
+.tb-feed__label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+}
+
+.tb-feed ul {
+  list-style: none;
+  margin: 0.7rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tb-feed li {
+  font-size: 0.76rem;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+.tb-feed__who {
+  color: var(--accent);
+}
+
+@media (max-width: 720px) {
+  .tb {
+    grid-template-columns: 1fr;
+  }
+}

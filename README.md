@@ -37,7 +37,7 @@ npm run generate -- <name>
 ```
 
 You can pass several names at once. Re-running is safe; it overwrites the
-generated files for those names.
+scaffolded files for those names.
 
 ## Build a site
 
