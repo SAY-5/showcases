@@ -1,0 +1,66 @@
+/* Fonts: Clash Display and General Sans from Fontshare, JetBrains Mono from Google Fonts. */
+@import url("https://api.fontshare.com/v2/css?f[]=clash-display@600,700&f[]=general-sans@400,500,600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap");
+
+:root {
+  --ink-900: #08080a;
+  --ink-800: #101014;
+  --ink-700: #18181f;
+  --ink-600: #23232c;
+  --line: #2a2a34;
+  --accent: #ff5b29;
+  --accent-soft: rgba(255, 91, 41, 0.14);
+  --text: #f4f4f6;
+  --text-dim: #9a9aa6;
+  --text-faint: #6c6c78;
+  --ok: #3ddc91;
+  --warn: #ffcf5c;
+
+  --font-display: "Clash Display", "General Sans", system-ui, sans-serif;
+  --font-sans: "General Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+
+  --maxw: 1080px;
+  --radius: 14px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--ink-900);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
