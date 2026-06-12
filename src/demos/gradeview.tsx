@@ -22,8 +22,12 @@ import {
   yAt,
 } from './gradeview/chart';
 import SmallMultiples from './gradeview/SmallMultiples';
+import SkillDrill from './gradeview/SkillDrill';
+import StruggleRanking from './gradeview/StruggleRanking';
 import {
   nudgeRange,
+  openDrill,
+  resetView,
   setFocusLearner,
   setRange,
   setSkill,
@@ -143,6 +147,10 @@ export default function GradeviewDemo() {
             ))}
           </select>
         </label>
+
+        <button type="button" className="gv__reset" onClick={() => resetView()}>
+          reset view
+        </button>
       </div>
 
       <WeekStepper range={view.range} />
@@ -270,23 +278,29 @@ export default function GradeviewDemo() {
         />
       )}
 
-      <div className={`gv__note ${flagged ? 'gv__note--hot' : ''}`}>
-        <div className="gv__note-head">change point</div>
-        {flagged ? (
-          <p className="gv__note-text">
-            Largest single-week drop in {skill.label} class mastery is week {drop.week + 1}, down{' '}
-            {Math.round(drop.delta * 100)} points from the week before.{' '}
-            {drop.week >= view.range[0] && drop.week <= view.range[1]
-              ? 'The week range covers it, so the cross-filtered panels include the regression week.'
-              : `Drag the range over week ${drop.week + 1} to fold it into the cross-filter.`}
-          </p>
-        ) : (
-          <p className="gv__note-text">
-            No single-week regression in {skill.label}. The class median climbs
-            steadily, so the change-point flag stays quiet for this skill.
-          </p>
-        )}
-      </div>
+      <StruggleRanking range={view.range} activeSkill={skill.key} onOpen={openDrill} />
+
+      {view.view === 'skill' ? (
+        <SkillDrill skill={skill.key} range={view.range} />
+      ) : (
+        <div className={`gv__note ${flagged ? 'gv__note--hot' : ''}`}>
+          <div className="gv__note-head">change point</div>
+          {flagged ? (
+            <p className="gv__note-text">
+              Largest single-week drop in {skill.label} class mastery is week {drop.week + 1}, down{' '}
+              {Math.round(drop.delta * 100)} points from the week before.{' '}
+              {drop.week >= view.range[0] && drop.week <= view.range[1]
+                ? 'The week range covers it, so the cross-filtered panels include the regression week.'
+                : `Drag the range over week ${drop.week + 1} to fold it into the cross-filter.`}
+            </p>
+          ) : (
+            <p className="gv__note-text">
+              No single-week regression in {skill.label}. The class median climbs
+              steadily, so the change-point flag stays quiet for this skill.
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="gv__metrics">
         <div className="gv__metric">
