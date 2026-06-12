@@ -7,6 +7,7 @@ import {
   removeMeter,
   addPlan,
   removePlan,
+  addEvent,
 } from './payscope/store';
 import type { PlanMeter } from './payscope/types';
 
@@ -39,14 +40,144 @@ export default function PayscopeDemo() {
       </nav>
 
       {tab === 'setup' && <SetupPanel />}
-      {tab === 'usage' && <UsagePlaceholder />}
+      {tab === 'usage' && <UsagePanel />}
       {tab === 'invoices' && <InvoicePlaceholder />}
     </div>
   );
 }
 
-function UsagePlaceholder() {
-  return <div className="ps__empty">Usage recording (next step)</div>;
+function UsagePanel() {
+  const store = useStore();
+  const [meterId, setMeterId] = useState(store.meters[0]?.id ?? '');
+  const [qty, setQty] = useState('1');
+  const [lastDup, setLastDup] = useState(false);
+
+  const meterMap = new Map(store.meters.map((m) => [m.id, m]));
+
+  let keyCounter = 0;
+  function nextKey(): string {
+    keyCounter += 1;
+    return `k-${Date.now().toString(36)}-${keyCounter}-${Math.random().toString(36).slice(2, 6)}`;
+  }
+
+  const [idempKey, setIdempKey] = useState(() => nextKey());
+
+  function handleRecord() {
+    const q = parseFloat(qty);
+    if (!meterId || isNaN(q) || q <= 0) return;
+    const added = addEvent(meterId, q, idempKey);
+    setLastDup(!added);
+    if (added) {
+      setIdempKey(nextKey());
+      setQty('1');
+    }
+  }
+
+  function handleReplay() {
+    if (!meterId) return;
+    const q = parseFloat(qty);
+    if (isNaN(q) || q <= 0) return;
+    const added = addEvent(meterId, q, idempKey);
+    setLastDup(!added);
+  }
+
+  return (
+    <section className="ps__stage" aria-label="usage recording">
+      {store.meters.length === 0 ? (
+        <p className="ps__empty">
+          No meters defined. Go to the setup tab to create meters first.
+        </p>
+      ) : (
+        <fieldset className="ps__fieldset glass">
+          <legend className="ps__legend">Record event</legend>
+          <div className="ps__form-row">
+            <label className="ps__field">
+              <span className="ps__field-label">Meter</span>
+              <select
+                className="ps__select"
+                value={meterId}
+                onChange={(e) => setMeterId(e.target.value)}
+              >
+                {store.meters.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} ({m.unit})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="ps__field">
+              <span className="ps__field-label">Quantity</span>
+              <input
+                className="ps__input"
+                type="number"
+                min="0"
+                step="1"
+                value={qty}
+                onChange={(e) => setQty(e.target.value)}
+              />
+            </label>
+            <label className="ps__field">
+              <span className="ps__field-label">Idempotency key</span>
+              <input
+                className="ps__input"
+                type="text"
+                value={idempKey}
+                onChange={(e) => setIdempKey(e.target.value)}
+                aria-describedby="idemp-hint"
+              />
+            </label>
+          </div>
+          <p id="idemp-hint" className="ps__empty" style={{ padding: 0, marginTop: -6 }}>
+            Replaying the same key is a no-op (duplicate detection).
+          </p>
+          <div className="demo__controls" style={{ marginTop: 0 }}>
+            <button className="demo__btn" onClick={handleRecord}>
+              Record event
+            </button>
+            <button className="demo__btn demo__btn--ghost" onClick={handleReplay}>
+              Replay same key
+            </button>
+            {lastDup && <span className="ps__event-dup">duplicate, no-op</span>}
+          </div>
+        </fieldset>
+      )}
+
+      <EventLog events={store.events} meterMap={meterMap} />
+    </section>
+  );
+}
+
+function EventLog({
+  events,
+  meterMap,
+}: {
+  events: ReturnType<typeof useStore>['events'];
+  meterMap: Map<string, ReturnType<typeof useStore>['meters'][number]>;
+}) {
+  if (events.length === 0) {
+    return <p className="ps__empty">No events recorded yet.</p>;
+  }
+
+  const sorted = [...events].reverse();
+
+  return (
+    <div className="ps__event-log" role="log" aria-label="event log">
+      {sorted.map((ev) => {
+        const m = meterMap.get(ev.meterId);
+        return (
+          <div key={ev.id} className="ps__event-row">
+            <span className="ps__event-meter">{m?.name ?? ev.meterId}</span>
+            <span className="ps__event-qty">
+              +{ev.quantity} {m?.unit ?? ''}
+            </span>
+            <span className="ps__event-time">
+              {new Date(ev.timestamp).toLocaleTimeString()}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 function InvoicePlaceholder() {
