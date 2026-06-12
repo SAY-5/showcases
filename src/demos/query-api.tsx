@@ -7,8 +7,12 @@ import {
   addRow,
   editRow,
   lastResponse,
+  loadDraft,
   loadExample,
   removeRow,
+  removeSaved,
+  resetAll,
+  saveToCollection,
   send,
   setBody,
   setMethod,
@@ -46,6 +50,7 @@ export default function QueryApiDemo() {
   // Snapshot the wall clock into state at mount so render stays pure; each send
   // refreshes it through an event handler, never during render.
   const [clock, setClock] = useState(() => Date.now());
+  const [saveName, setSaveName] = useState('');
 
   const current = lastResponse(state);
 
@@ -53,6 +58,12 @@ export default function QueryApiDemo() {
     const now = Date.now();
     setClock(now);
     send(now);
+  }
+
+  function onSave() {
+    if (saveName.trim().length === 0) return;
+    saveToCollection(saveName);
+    setSaveName('');
   }
 
   return (
@@ -73,6 +84,13 @@ export default function QueryApiDemo() {
         <Builder state={state} onSend={onSend} clock={clock} />
         <Viewer current={current} bodyError={state.bodyError} />
       </div>
+
+      <Collections
+        state={state}
+        saveName={saveName}
+        setSaveName={setSaveName}
+        onSave={onSave}
+      />
     </div>
   );
 }
@@ -284,6 +302,121 @@ function Viewer({
           </dl>
         </>
       )}
+    </section>
+  );
+}
+
+// ---------- collection + history ----------
+
+function Collections({
+  state,
+  saveName,
+  setSaveName,
+  onSave,
+}: {
+  state: State;
+  saveName: string;
+  setSaveName: (v: string) => void;
+  onSave: () => void;
+}) {
+  return (
+    <section className="glass qa-panel qa-collections" aria-labelledby="qa-coll-h">
+      <div className="qa-panel-head">
+        <h2 id="qa-coll-h" className="qa-panel-title">
+          Collection and history
+        </h2>
+        <button type="button" className="qa-reset" onClick={resetAll}>
+          Reset all
+        </button>
+      </div>
+
+      <form
+        className="qa-save"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSave();
+        }}
+      >
+        <label className="qa-field qa-savefield">
+          <span className="qa-label">Save current request as</span>
+          <input
+            type="text"
+            value={saveName}
+            placeholder="List active users"
+            onChange={(e) => setSaveName(e.target.value)}
+          />
+        </label>
+        <button
+          type="submit"
+          className="qa-add"
+          disabled={saveName.trim().length === 0}
+        >
+          Save
+        </button>
+      </form>
+
+      <div className="qa-cols">
+        <div>
+          <h3 className="qa-sub">Saved ({state.collection.length})</h3>
+          {state.collection.length === 0 ? (
+            <p className="qa-empty">No saved requests yet.</p>
+          ) : (
+            <ul className="qa-list">
+              {state.collection.map((s) => (
+                <li key={s.id} className="qa-item">
+                  <button
+                    type="button"
+                    className="qa-item-main"
+                    onClick={() => loadDraft(s.request)}
+                  >
+                    <span className={`qa-verb ${s.request.method.toLowerCase()}`}>
+                      {s.request.method}
+                    </span>
+                    <span className="qa-item-name">{s.name}</span>
+                    <span className="qa-item-path">{s.request.path}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="qa-x"
+                    aria-label={`Delete saved request ${s.name}`}
+                    onClick={() => removeSaved(s.id)}
+                  >
+                    &times;
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div>
+          <h3 className="qa-sub">History ({state.history.length})</h3>
+          {state.history.length === 0 ? (
+            <p className="qa-empty">No requests sent yet.</p>
+          ) : (
+            <ul className="qa-list">
+              {state.history.map((h) => (
+                <li key={h.id} className="qa-item">
+                  <button
+                    type="button"
+                    className="qa-item-main"
+                    onClick={() => loadDraft(h.request)}
+                  >
+                    <span className={`qa-verb ${h.method.toLowerCase()}`}>
+                      {h.method}
+                    </span>
+                    <span className="qa-item-path">{h.path}</span>
+                    <span className={`qa-badge sm ${statusClass(h.status)}`}>
+                      {h.status}
+                    </span>
+                    <span className="qa-item-time">{h.durationMs.toFixed(1)} ms</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
     </section>
   );
 }
