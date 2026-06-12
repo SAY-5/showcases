@@ -8,6 +8,8 @@ import {
   addPlan,
   removePlan,
   addEvent,
+  createInvoice,
+  resetAll,
 } from './payscope/store';
 import type { PlanMeter } from './payscope/types';
 
@@ -41,7 +43,13 @@ export default function PayscopeDemo() {
 
       {tab === 'setup' && <SetupPanel />}
       {tab === 'usage' && <UsagePanel />}
-      {tab === 'invoices' && <InvoicePlaceholder />}
+      {tab === 'invoices' && <InvoicePanel />}
+
+      <div className="demo__controls">
+        <button className="demo__btn demo__btn--ghost" onClick={resetAll}>
+          Reset all data
+        </button>
+      </div>
     </div>
   );
 }
@@ -180,8 +188,123 @@ function EventLog({
   );
 }
 
-function InvoicePlaceholder() {
-  return <div className="ps__empty">Invoice generation (next step)</div>;
+function InvoicePanel() {
+  const store = useStore();
+  const [planId, setPlanId] = useState(store.plans[0]?.id ?? '');
+
+  // Default period: current day start to end
+  const now = new Date();
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const dayEnd = dayStart + 86400000 - 1;
+  const [periodStart, setPeriodStart] = useState(dayStart);
+  const [periodEnd, setPeriodEnd] = useState(dayEnd);
+
+  function handleGenerate() {
+    if (!planId) return;
+    createInvoice(planId, periodStart, periodEnd);
+  }
+
+  function formatDate(ts: number): string {
+    return new Date(ts).toLocaleDateString();
+  }
+
+  return (
+    <section className="ps__stage" aria-label="invoices">
+      {store.plans.length === 0 ? (
+        <p className="ps__empty">
+          No plans defined. Go to the setup tab to create plans first.
+        </p>
+      ) : (
+        <fieldset className="ps__fieldset glass">
+          <legend className="ps__legend">Generate invoice</legend>
+          <div className="ps__period-row">
+            <label className="ps__field">
+              <span className="ps__field-label">Plan</span>
+              <select
+                className="ps__select"
+                value={planId}
+                onChange={(e) => setPlanId(e.target.value)}
+              >
+                {store.plans.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="ps__field">
+              <span className="ps__field-label">Period start</span>
+              <input
+                className="ps__input"
+                type="date"
+                value={new Date(periodStart).toISOString().split('T')[0]}
+                onChange={(e) => setPeriodStart(new Date(e.target.value).getTime())}
+              />
+            </label>
+            <label className="ps__field">
+              <span className="ps__field-label">Period end</span>
+              <input
+                className="ps__input"
+                type="date"
+                value={new Date(periodEnd).toISOString().split('T')[0]}
+                onChange={(e) =>
+                  setPeriodEnd(new Date(e.target.value).getTime() + 86400000 - 1)
+                }
+              />
+            </label>
+          </div>
+          <button className="demo__btn" onClick={handleGenerate}>
+            Generate invoice
+          </button>
+        </fieldset>
+      )}
+
+      {store.invoices.length > 0 && (
+        <div className="ps__invoices-list" aria-label="generated invoices">
+          {[...store.invoices].reverse().map((inv) => (
+            <article key={inv.id} className="ps__invoice glass">
+              <div className="ps__invoice-head">
+                <span className="ps__invoice-id">{inv.id}</span>
+                <span className="ps__invoice-plan">
+                  {inv.planName} | {formatDate(inv.periodStart)} to {formatDate(inv.periodEnd)}
+                </span>
+              </div>
+              <table className="ps__invoice-table">
+                <thead>
+                  <tr>
+                    <th>Meter</th>
+                    <th>Usage</th>
+                    <th>Included</th>
+                    <th>Overage</th>
+                    <th>Rate</th>
+                    <th className="ps__td-right">Charge</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {inv.lineItems.map((li, i) => (
+                    <tr key={i}>
+                      <td>{li.meterName}</td>
+                      <td>
+                        {li.totalUsage} {li.meterUnit}
+                      </td>
+                      <td>{li.includedQuota}</td>
+                      <td>{li.overageUsage}</td>
+                      <td>${li.overageRate}</td>
+                      <td className="ps__td-right">${li.charge.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="ps__invoice-total">
+                <span className="ps__invoice-total-label">subtotal</span>
+                <span className="ps__invoice-total-val">${inv.subtotal.toFixed(2)}</span>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
 }
 
 function SetupPanel() {
