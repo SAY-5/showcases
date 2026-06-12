@@ -3,12 +3,16 @@ import { useReducedMotion } from 'framer-motion';
 import '../styles/demo.css';
 import './live-events-spa.css';
 import {
+  removeFromAgenda,
   schedule,
   toggleAgenda,
   useAgendaIds,
 } from './live-events-spa/store';
 import {
+  agendaSessions,
+  conflictingIds,
   filterSessions,
+  findConflicts,
   formatRange,
   groupByTrack,
   tagsOf,
@@ -60,6 +64,13 @@ export default function LiveEventsSpaDemo() {
   const visible = useMemo(() => filterSessions(schedule, filter), [filter]);
   const groups = useMemo(() => groupByTrack(visible), [visible]);
   const savedSet = useMemo(() => new Set(savedIds), [savedIds]);
+
+  const agenda = useMemo(
+    () => agendaSessions(schedule, savedIds),
+    [savedIds],
+  );
+  const conflictSet = useMemo(() => conflictingIds(agenda), [agenda]);
+  const conflicts = useMemo(() => findConflicts(agenda), [agenda]);
 
   return (
     <div className="demo les" data-reduce={reduce ? 'true' : 'false'}>
@@ -122,7 +133,104 @@ export default function LiveEventsSpaDemo() {
           />
         </section>
       )}
+
+      {view === 'agenda' && (
+        <section
+          id="les-panel-agenda"
+          role="tabpanel"
+          aria-labelledby="les-tab-agenda"
+          className="les__panel"
+        >
+          <AgendaView
+            agenda={agenda}
+            conflictSet={conflictSet}
+            conflictCount={conflicts.length}
+            trackColor={trackColor}
+          />
+        </section>
+      )}
     </div>
+  );
+}
+
+function AgendaView({
+  agenda,
+  conflictSet,
+  conflictCount,
+  trackColor,
+}: {
+  agenda: PlacedSession[];
+  conflictSet: Set<string>;
+  conflictCount: number;
+  trackColor: (track: string) => string;
+}) {
+  if (agenda.length === 0) {
+    return (
+      <p className="les__empty" role="status">
+        Your agenda is empty. Add sessions from the schedule to build it.
+      </p>
+    );
+  }
+  return (
+    <div className="les__agenda">
+      {conflictCount > 0 ? (
+        <p className="les__warn" role="alert">
+          {conflictCount} time conflict{conflictCount === 1 ? '' : 's'} in your
+          agenda. Overlapping sessions are flagged below.
+        </p>
+      ) : (
+        <p className="les__ok" role="status">
+          No conflicts. Every saved session fits without overlap.
+        </p>
+      )}
+      <ol className="les__agendalist">
+        {agenda.map((s) => (
+          <li key={s.id}>
+            <AgendaRow
+              session={s}
+              conflicted={conflictSet.has(s.id)}
+              accent={trackColor(s.track)}
+            />
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function AgendaRow({
+  session,
+  conflicted,
+  accent,
+}: {
+  session: PlacedSession;
+  conflicted: boolean;
+  accent: string;
+}) {
+  return (
+    <article
+      className={`les__row glass${conflicted ? ' les__row--clash' : ''}`}
+      style={{ borderLeftColor: conflicted ? 'var(--magenta)' : accent }}
+    >
+      <div className="les__rowmain">
+        <p className="les__time">{formatRange(session)}</p>
+        <h5 className="les__cardtitle">{session.title}</h5>
+        <p className="les__cmeta">
+          {session.track} · {session.speaker} · {session.room}
+        </p>
+        {conflicted && (
+          <p className="les__clashtag">Overlaps another saved session</p>
+        )}
+      </div>
+      <button
+        type="button"
+        className="les__remove"
+        onClick={() => removeFromAgenda(session.id)}
+      >
+        Remove
+        <span className="les__sr"> {session.title} from agenda</span>
+      </button>
+    </article>
   );
 }
 
