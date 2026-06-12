@@ -6,6 +6,7 @@ import { useStore } from './query-api/state';
 import {
   addRow,
   editRow,
+  lastResponse,
   loadExample,
   removeRow,
   send,
@@ -14,7 +15,7 @@ import {
   setPath,
   type State,
 } from './query-api/store';
-import type { KeyValue, Method } from './query-api/types';
+import type { HistoryEntry, KeyValue, Method } from './query-api/types';
 
 // In-browser REST request console. The user composes a request (method, path,
 // query params, headers, JSON body), sends it against a mock backend that runs
@@ -25,11 +26,28 @@ import type { KeyValue, Method } from './query-api/types';
 
 const METHODS: Method[] = ['GET', 'POST'];
 
+function statusClass(status: number): string {
+  if (status >= 200 && status < 300) return 'ok';
+  if (status >= 400 && status < 500) return 'client';
+  if (status >= 500) return 'server';
+  return 'info';
+}
+
+function pretty(value: unknown): string {
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
 export default function QueryApiDemo() {
   const state = useStore();
   // Snapshot the wall clock into state at mount so render stays pure; each send
   // refreshes it through an event handler, never during render.
   const [clock, setClock] = useState(() => Date.now());
+
+  const current = lastResponse(state);
 
   function onSend() {
     const now = Date.now();
@@ -53,6 +71,7 @@ export default function QueryApiDemo() {
 
       <div className="qa-grid">
         <Builder state={state} onSend={onSend} clock={clock} />
+        <Viewer current={current} bodyError={state.bodyError} />
       </div>
     </div>
   );
@@ -196,5 +215,75 @@ function Rows({
         + Add {title.toLowerCase()}
       </button>
     </fieldset>
+  );
+}
+
+// ---------- response viewer ----------
+
+function Viewer({
+  current,
+  bodyError,
+}: {
+  current: HistoryEntry | null;
+  bodyError: string | null;
+}) {
+  return (
+    <section className="glass qa-panel" aria-labelledby="qa-resp-h" aria-live="polite">
+      <div className="qa-panel-head">
+        <h2 id="qa-resp-h" className="qa-panel-title">
+          Response
+        </h2>
+        {current && (
+          <span className="qa-timing">{current.durationMs.toFixed(2)} ms</span>
+        )}
+      </div>
+
+      {bodyError && (
+        <p id="qa-body-err" className="qa-note" role="alert">
+          {bodyError}
+        </p>
+      )}
+
+      {!current && !bodyError && (
+        <p className="qa-empty">Send a request to see the response here.</p>
+      )}
+
+      {current && (
+        <>
+          <div className="qa-status-line">
+            <span className={`qa-badge ${statusClass(current.status)}`}>
+              {current.status} {current.response.statusText}
+            </span>
+            <span className="qa-status-meta">
+              {current.method} {current.path}
+            </span>
+          </div>
+
+          {current.status === 400 && (
+            <p className="qa-note" role="status">
+              Validation:{' '}
+              {String(
+                (current.response.body as { error?: string }).error ?? 'bad request',
+              )}
+            </p>
+          )}
+
+          <h3 className="qa-sub">Body</h3>
+          <pre className="qa-json" tabIndex={0}>
+            {pretty(current.response.body)}
+          </pre>
+
+          <h3 className="qa-sub">Response headers</h3>
+          <dl className="qa-headers">
+            {Object.entries(current.response.headers).map(([k, v]) => (
+              <div className="qa-hrow" key={k}>
+                <dt>{k}</dt>
+                <dd>{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </>
+      )}
+    </section>
   );
 }
