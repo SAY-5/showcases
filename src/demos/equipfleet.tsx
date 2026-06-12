@@ -63,6 +63,7 @@ export default function EquipfleetDemo() {
   // action feedback
   const [toast, setToast] = useState<string | null>(null);
   const [assignInput, setAssignInput] = useState('');
+  const [confirmRetire, setConfirmRetire] = useState(false);
 
   // derived data
   const filtered = useMemo(() => {
@@ -88,6 +89,7 @@ export default function EquipfleetDemo() {
   const openDetail = useCallback((id: string) => {
     setSelectedId(id);
     setAssignInput('');
+    setConfirmRetire(false);
     setView('detail');
   }, []);
 
@@ -366,6 +368,20 @@ export default function EquipfleetDemo() {
               <dt>Next maintenance</dt>
               <dd>{selected.nextMaintenance ?? 'Not scheduled'}</dd>
             </div>
+            <div className="efd__dl-pair">
+              <dt>Added</dt>
+              <dd>{new Date(selected.createdAt).toLocaleDateString()}</dd>
+            </div>
+            <div className="efd__dl-pair">
+              <dt>Valid transitions</dt>
+              <dd>
+                {STATUSES.filter((s) => canTransition(selected.status, s)).length === 0
+                  ? 'None (terminal state)'
+                  : STATUSES.filter((s) => canTransition(selected.status, s))
+                      .map((s) => STATUS_LABEL[s])
+                      .join(', ')}
+              </dd>
+            </div>
           </dl>
 
           {/* actions */}
@@ -417,11 +433,22 @@ export default function EquipfleetDemo() {
               </button>
             )}
 
-            {/* Retire */}
-            {canTransition(selected.status, 'retired') && (
-              <button className="efd__retire-btn" onClick={() => handleRetire(selected)}>
+            {/* Retire (two-step confirmation) */}
+            {canTransition(selected.status, 'retired') && !confirmRetire && (
+              <button className="efd__retire-btn" onClick={() => setConfirmRetire(true)}>
                 Retire asset
               </button>
+            )}
+            {canTransition(selected.status, 'retired') && confirmRetire && (
+              <div className="efd__action-row">
+                <span className="efd__confirm-label">Retire is permanent.</span>
+                <button className="efd__retire-btn" onClick={() => handleRetire(selected)}>
+                  Confirm retire
+                </button>
+                <button className="demo__btn demo__btn--ghost" onClick={() => setConfirmRetire(false)}>
+                  Cancel
+                </button>
+              </div>
             )}
           </div>
         </section>
