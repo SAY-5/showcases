@@ -13,10 +13,12 @@ import {
   ROLES,
   approveItem,
   rejectItem,
+  resetAll,
   setActingAs,
   submitItem,
 } from './flowdeck/store';
 import {
+  awaitingCounts,
   bucketByStep,
   canDecide,
   currentStep,
@@ -92,6 +94,105 @@ export default function FlowdeckDemo() {
         now={now}
         onClose={() => setSelectedId(null)}
       />
+
+      <WorkflowPanel />
+    </div>
+  );
+}
+
+function WorkflowPanel() {
+  const { workflow, items, actingAs } = useFlowStore();
+
+  const counts = useMemo(
+    () => awaitingCounts(workflow, items),
+    [workflow, items],
+  );
+
+  // Items in flight that the viewer's current role cannot act on are "blocked"
+  // from their seat, waiting on another role.
+  const blockedForMe = useMemo(() => {
+    let n = 0;
+    for (const item of items) {
+      const step = currentStep(workflow, item);
+      if (step && step.approver !== actingAs) n += 1;
+    }
+    return n;
+  }, [workflow, items, actingAs]);
+
+  function onReset() {
+    resetAll();
+  }
+
+  return (
+    <section className="fd2__panel" aria-label="workflow definition and stats">
+      <div className="fd2__panel-grid">
+        <div className="fd2__def">
+          <h5 className="fd2__sub-head">{workflow.name} steps</h5>
+          <ol className="fd2__def-list">
+            {workflow.steps.map((step, i) => (
+              <li className="fd2__def-row" key={step.id}>
+                <span className="fd2__def-num">{i + 1}</span>
+                <div className="fd2__def-body">
+                  <span className="fd2__def-name">
+                    {step.name}
+                    <span className="fd2__def-role">{step.approver}</span>
+                  </span>
+                  <span className="fd2__def-desc">{step.description}</span>
+                  <span className="fd2__def-rule">
+                    {step.condition
+                      ? `applies when ${step.condition.field} ${step.condition.op} ${String(
+                          step.condition.value,
+                        )}`
+                      : 'always applies'}
+                    {' · '}
+                    reject sends to {step.onReject}
+                  </span>
+                </div>
+                <span className="fd2__def-count" aria-label="awaiting at this step">
+                  {counts.perStep[step.id] ?? 0}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <div className="fd2__stats">
+          <h5 className="fd2__sub-head">summary</h5>
+          <dl className="fd2__stat-grid">
+            <Stat label="in flight" value={counts.inFlight} />
+            <Stat label="approved" value={counts.completed} />
+            <Stat label="total" value={items.length} />
+            <Stat label="not on you" value={blockedForMe} tone="warn" />
+          </dl>
+          <button
+            type="button"
+            className="demo__btn demo__btn--ghost fd2__reset"
+            onClick={onReset}
+          >
+            Reset workflow
+          </button>
+          <p className="fd2__reset-note">
+            clears stored items and audit and restores the seed set
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone?: 'warn';
+}) {
+  return (
+    <div className="fd2__stat" data-tone={tone}>
+      <dt>{label}</dt>
+      <dd>{value}</dd>
     </div>
   );
 }
