@@ -264,7 +264,7 @@ function IncidentPanel({
       {state.incidents.length === 0 ? (
         <p className="pr2__empty">No incidents yet. Trigger one to start paging.</p>
       ) : (
-        <ul className="pr2__inc-list">
+        <ul className="pr2__inc-list" aria-live="polite">
           {state.incidents.map((inc) => (
             <IncidentCard key={inc.id} incident={inc} state={state} />
           ))}
