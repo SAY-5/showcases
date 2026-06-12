@@ -158,9 +158,20 @@ function Scorecard({
   return (
     <section className="gg__scorecard glass" aria-label="Scorecard">
       <div className="gg__score">
-        <div className="gg__score-num" aria-hidden="true">
-          <span className="gg__score-pct">{score.percent}</span>
-          <span className="gg__score-unit">%</span>
+        <div
+          className="gg__score-num"
+          role="meter"
+          aria-valuenow={score.percent}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`Overall weighted compliance ${score.percent} percent`}
+        >
+          <span className="gg__score-pct" aria-hidden="true">
+            {score.percent}
+          </span>
+          <span className="gg__score-unit" aria-hidden="true">
+            %
+          </span>
         </div>
         <div className="gg__score-meta">
           <span

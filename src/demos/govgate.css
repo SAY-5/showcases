@@ -314,6 +314,11 @@
   color: var(--text);
 }
 
+.gg__status:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .gg__status.is-on {
   color: var(--ink-900);
   border-color: transparent;
