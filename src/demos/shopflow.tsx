@@ -188,6 +188,16 @@ export default function ShopflowDemo() {
         </span>
       </div>
 
+      <p className="sfa__sr" role="status" aria-live="polite">
+        {run === 'committed' && confirmed
+          ? `Order ${confirmed.id} placed.`
+          : run === 'rolledback'
+            ? 'Order rolled back. No partial order was written.'
+            : run === 'fallback'
+              ? 'Gateway breaker is open. Served the fallback.'
+              : ''}
+      </p>
+
       {view === 'shop' && (
         <div className="sfa__grid">
           <section className="sfa__catalog" aria-label="Product catalog">
