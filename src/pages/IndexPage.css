@@ -429,3 +429,45 @@
   font-size: 0.85rem;
   margin: 0;
 }
+
+/* ----- Responsive ----- */
+@media (max-width: 640px) {
+  .idx-hero {
+    min-height: 70vh;
+    text-align: left;
+  }
+
+  .idx-hero__inner {
+    text-align: left;
+  }
+
+  .idx-hero__stats {
+    justify-content: flex-start;
+  }
+
+  .idx-search {
+    flex-wrap: wrap;
+  }
+
+  .idx-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ----- Reduced motion: hold every backdrop layer still. ----- */
+@media (prefers-reduced-motion: reduce) {
+  .idx-streak,
+  .idx-glow {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .idx-card__link {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .idx-card__link:hover,
+  .idx-card__link:focus-visible {
+    transform: none;
+  }
+}
