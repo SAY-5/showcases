@@ -53,6 +53,8 @@ export default function TaskboardDemo() {
   const [overCol, setOverCol] = useState<ColumnId | null>(null);
   // Keyboard "grab" state: the card a keyboard user is currently moving.
   const [grabbed, setGrabbed] = useState<string | null>(null);
+  // Polite status text for screen readers, announcing grab and move outcomes.
+  const [status, setStatus] = useState('');
 
   // Conflict simulation state.
   const [conflictId, setConflictId] = useState<string | null>(null);
@@ -137,19 +139,36 @@ export default function TaskboardDemo() {
   // Space/Enter toggles grab. While grabbed, arrow keys move the card one step
   // and commit immediately, so the board reflects each press; Escape releases.
   function onCardKeyDown(e: React.KeyboardEvent, id: string) {
+    const card = board.cards[id];
     if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault();
-      setGrabbed((g) => (g === id ? null : id));
+      setGrabbed((g) => {
+        const next = g === id ? null : id;
+        setStatus(
+          next
+            ? `Grabbed ${card?.title ?? id}. Use arrow keys to move.`
+            : `Dropped ${card?.title ?? id}.`,
+        );
+        return next;
+      });
       return;
     }
     if (e.key === 'Escape') {
+      if (grabbed === id) setStatus(`Move cancelled for ${card?.title ?? id}.`);
       setGrabbed(null);
       return;
     }
     if (grabbed === id && ARROW_DIR[e.key]) {
       e.preventDefault();
       const target = step(board, id, ARROW_DIR[e.key]);
-      if (target) moveCard(id, target.column, target.index);
+      if (target) {
+        moveCard(id, target.column, target.index);
+        setStatus(
+          `${card?.title ?? id} moved to ${COLUMN_LABELS[target.column]}, position ${target.index + 1}.`,
+        );
+      } else {
+        setStatus('Cannot move further in that direction.');
+      }
     }
   }
 
@@ -166,6 +185,9 @@ export default function TaskboardDemo() {
       </p>
 
       <div className="tbk">
+        <div className="tbk__sr" role="status" aria-live="polite">
+          {status}
+        </div>
         <div className="tbk__bar">
           <span className="tbk__bar-meta" aria-live="polite">
             board @Version {board.version}
@@ -234,10 +256,9 @@ export default function TaskboardDemo() {
                         className={`tbk__card ${dragId === card.id ? 'tbk__card--drag' : ''} ${grabbed === card.id ? 'tbk__card--grab' : ''}`}
                         draggable
                         tabIndex={0}
-                        role="button"
                         aria-roledescription="Draggable card"
-                        aria-grabbed={grabbed === card.id}
-                        aria-label={`${card.title}. ${posLabel}. Press Space to grab, arrow keys to move.`}
+                        data-grabbed={grabbed === card.id}
+                        aria-label={`${card.title}. ${posLabel}. ${grabbed === card.id ? 'Grabbed. Arrow keys move it, Space drops, Escape cancels.' : 'Press Space to grab and move with arrow keys.'}`}
                         onDragStart={() => onDragStart(card.id)}
                         onDragEnd={onDragEnd}
                         onDragOver={(e) => {
