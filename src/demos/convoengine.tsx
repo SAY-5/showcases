@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import '../styles/demo.css';
 import './convoengine.css';
 import type { ChoiceNode, FlowNode, MessageNode } from './convoengine/types';
+import { validate } from './convoengine/engine';
 import {
   addNode,
   addOption,
@@ -191,6 +192,89 @@ function NodeCard({
   );
 }
 
+// Live validation summary. Re-derives from the flow on every change and lists
+// the offending node ids for each problem class so the author can fix them.
+function ValidationPanel({ nodes }: { nodes: FlowNode[] }) {
+  const flow = useFlow();
+  const report = useMemo(() => validate(flow), [flow]);
+  const labelOf = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const n of nodes) map.set(n.id, n.label);
+    return (id: string) => map.get(id) ?? id;
+  }, [nodes]);
+
+  const clean =
+    report.unreachable.length === 0 &&
+    report.deadEnds.length === 0 &&
+    report.brokenRefs.length === 0 &&
+    flow.start !== null;
+
+  return (
+    <section className="ceb__validation" aria-label="Validation issues">
+      <div className="ceb__val-head">
+        <span className="ceb__val-title">Validation</span>
+        <span
+          className="ceb__val-status"
+          data-ok={report.ok}
+          role="status"
+          aria-live="polite"
+        >
+          {clean ? 'No issues' : 'Issues found'}
+          {report.hasCycle && <em className="ceb__val-cycle">contains a loop</em>}
+        </span>
+      </div>
+
+      {clean ? (
+        <p className="ceb__val-clean">
+          Every node is reachable, no node is a dead end, and all targets
+          resolve. The flow is ready to play.
+        </p>
+      ) : (
+        <ul className="ceb__val-list">
+          {flow.start === null && (
+            <li className="ceb__val-item" data-kind="start">
+              <span className="ceb__val-kind">no start</span>
+              <span>Pick a node to start the script from.</span>
+            </li>
+          )}
+          {report.unreachable.map((id) => (
+            <li className="ceb__val-item" data-kind="unreachable" key={`u-${id}`}>
+              <span className="ceb__val-kind">unreachable</span>
+              <span>
+                {labelOf(id)} <code className="ceb__id">{id}</code> cannot be
+                reached from the start node.
+              </span>
+            </li>
+          ))}
+          {report.deadEnds.map((id) => (
+            <li className="ceb__val-item" data-kind="deadend" key={`d-${id}`}>
+              <span className="ceb__val-kind">dead end</span>
+              <span>
+                {labelOf(id)} <code className="ceb__id">{id}</code> has no way
+                out and is not an end node.
+              </span>
+            </li>
+          ))}
+          {report.brokenRefs.map((ref) => (
+            <li
+              className="ceb__val-item"
+              data-kind="broken"
+              key={`b-${ref.nodeId}-${ref.optionId ?? 'next'}-${ref.missingId}`}
+            >
+              <span className="ceb__val-kind">broken link</span>
+              <span>
+                {labelOf(ref.nodeId)} <code className="ceb__id">{ref.nodeId}</code>
+                {ref.optionId ? ' has an option that points' : ' points'} at a
+                missing node <code className="ceb__id">{ref.missingId}</code>.
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 export default function ConvoengineDemo() {
   const flow = useFlow();
   const [confirmReset, setConfirmReset] = useState(false);
@@ -261,6 +345,8 @@ export default function ConvoengineDemo() {
           </button>
         )}
       </div>
+
+      <ValidationPanel nodes={flow.nodes} />
 
       <ol className="ceb__nodes">
         {flow.nodes.length === 0 && (
