@@ -1,9 +1,21 @@
+import { useMemo, useState } from 'react';
 import '../styles/demo.css';
 import './subscription-portal.css';
 import { useStore } from './subscription-portal/state';
-import { findPlan, money, planTotalCents } from './subscription-portal/engine';
+import {
+  PLANS,
+  changePlan,
+  changeSeats,
+  findPlan,
+} from './subscription-portal/store';
+import {
+  clampSeats,
+  money,
+  planTotalCents,
+  prorate,
+} from './subscription-portal/engine';
 import { formatDate, statusLabel } from './subscription-portal/format';
-import type { Invoice } from './subscription-portal/types';
+import type { Invoice, Subscription } from './subscription-portal/types';
 
 const KIND_LABEL: Record<Invoice['kind'], string> = {
   signup: 'Signup',
@@ -26,6 +38,177 @@ function Amount({ cents }: { cents: number }) {
       {credit ? '-' : '+'}
       {money(Math.abs(cents))}
     </span>
+  );
+}
+
+function PlanManagement({ sub }: { sub: Subscription }) {
+  const current = findPlan(sub.planId);
+  const [draftPlanId, setDraftPlanId] = useState(sub.planId);
+  const [draftSeats, setDraftSeats] = useState(sub.seats);
+  // A render-time snapshot of the clock so the preview proration is stable
+  // across re-renders; the committed action re-reads the real clock.
+  const [now] = useState(() => Date.now());
+
+  const draftPlan = findPlan(draftPlanId);
+  const seatClamp = draftPlan
+    ? clampSeats(draftPlan, draftSeats)
+    : { seats: draftSeats, reason: null };
+  const effectiveSeats = seatClamp.seats;
+
+  const preview = useMemo(() => {
+    if (!current || !draftPlan) return null;
+    return prorate(sub, current, draftPlan, effectiveSeats, now);
+  }, [current, draftPlan, sub, effectiveSeats, now]);
+
+  const unchanged =
+    draftPlanId === sub.planId && effectiveSeats === sub.seats;
+  const disabled = sub.status === 'canceled';
+
+  function confirm() {
+    if (unchanged || disabled) return;
+    // Seats-only change keeps the running cycle through the seat path; a tier
+    // change rebases the period through the plan path.
+    if (draftPlanId === sub.planId) {
+      changeSeats(effectiveSeats);
+    } else {
+      changePlan(draftPlanId, effectiveSeats);
+    }
+  }
+
+  function applySeats(next: number) {
+    setDraftSeats(next);
+  }
+
+  // Seat stepper bounds follow the drafted plan.
+  const min = draftPlan ? draftPlan.minSeats : 1;
+  const max = draftPlan ? draftPlan.maxSeats : 99;
+
+  return (
+    <section className="sp-section" aria-labelledby="sp-plans-h">
+      <h4 id="sp-plans-h" className="sp-section__title">
+        Change plan
+      </h4>
+
+      <div className="sp-grid" role="radiogroup" aria-label="available plans">
+        {PLANS.map((p) => {
+          const selected = p.id === draftPlanId;
+          const isCurrent = p.id === sub.planId;
+          return (
+            <button
+              key={p.id}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              className={`glass sp-plan${selected ? ' sp-plan--on' : ''}`}
+              onClick={() => {
+                setDraftPlanId(p.id);
+                setDraftSeats(clampSeats(p, draftSeats).seats);
+              }}
+              disabled={disabled}
+            >
+              <div className="sp-plan__head">
+                <span className="sp-plan__name">{p.name}</span>
+                {isCurrent ? (
+                  <span className="sp-plan__current">Current</span>
+                ) : null}
+              </div>
+              <div className="sp-plan__price">
+                <strong>{money(p.priceCents)}</strong>
+                <span>/ seat / {p.interval}</span>
+              </div>
+              <p className="sp-plan__blurb">{p.blurb}</p>
+              <ul className="sp-plan__features">
+                {p.features.slice(0, 4).map((f) => (
+                  <li key={f}>{f}</li>
+                ))}
+              </ul>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="glass sp-reprice">
+        <div className="sp-stepper" aria-label="seat count">
+          <span className="sp-stepper__label">Seats</span>
+          <div className="sp-stepper__ctrl">
+            <button
+              type="button"
+              className="sp-stepper__btn"
+              aria-label="remove a seat"
+              onClick={() => applySeats(effectiveSeats - 1)}
+              disabled={disabled || effectiveSeats <= min}
+            >
+              -
+            </button>
+            <output className="sp-stepper__val" aria-live="polite">
+              {effectiveSeats}
+            </output>
+            <button
+              type="button"
+              className="sp-stepper__btn"
+              aria-label="add a seat"
+              onClick={() => applySeats(effectiveSeats + 1)}
+              disabled={disabled || effectiveSeats >= max}
+            >
+              +
+            </button>
+          </div>
+          {seatClamp.reason ? (
+            <span className="sp-stepper__note">{seatClamp.reason}</span>
+          ) : null}
+        </div>
+
+        <div className="sp-preview" aria-live="polite">
+          {preview && draftPlan ? (
+            <>
+              <div className="sp-preview__row">
+                <span>New total</span>
+                <span className="sp-preview__v">
+                  {money(planTotalCents(draftPlan, effectiveSeats))} /{' '}
+                  {draftPlan.interval}
+                </span>
+              </div>
+              <div className="sp-preview__row sp-preview__row--muted">
+                <span>
+                  Credit for {preview.daysRemaining} of {preview.daysInPeriod}{' '}
+                  days
+                </span>
+                <span className="sp-preview__v">
+                  -{money(preview.creditCents)}
+                </span>
+              </div>
+              <div className="sp-preview__row sp-preview__row--muted">
+                <span>Charge for remaining days</span>
+                <span className="sp-preview__v">
+                  +{money(preview.chargeCents)}
+                </span>
+              </div>
+              <div className="sp-preview__row sp-preview__row--total">
+                <span>
+                  {preview.amountCents >= 0 ? 'Due now' : 'Account credit'}
+                </span>
+                <span
+                  className={`sp-preview__v ${
+                    preview.amountCents < 0 ? 'sp-amt--credit' : ''
+                  }`}
+                >
+                  {preview.amountCents < 0 ? '-' : ''}
+                  {money(Math.abs(preview.amountCents))}
+                </span>
+              </div>
+            </>
+          ) : null}
+          <button
+            type="button"
+            className="demo__btn sp-confirm"
+            onClick={confirm}
+            disabled={unchanged || disabled}
+          >
+            {unchanged ? 'No change' : 'Confirm change'}
+          </button>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -129,6 +312,8 @@ export default function SubscriptionPortalDemo() {
           </article>
         </div>
       </section>
+
+      <PlanManagement sub={sub} />
     </div>
   );
 }
