@@ -4,20 +4,99 @@
   flex-direction: column;
 }
 
+/* ----- Hero ----- */
 .idx-hero {
   position: relative;
   overflow: hidden;
-  padding: 6rem 1.5rem 3.5rem;
+  padding: clamp(5rem, 14vh, 9rem) 1.5rem clamp(3rem, 7vh, 4.5rem);
   border-bottom: 1px solid var(--line);
+  min-height: clamp(30rem, 78vh, 46rem);
+  display: flex;
+  align-items: center;
 }
 
+/* Backdrop layers sit behind the content. */
 .idx-hero__bg {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(60% 70% at 50% 0%, var(--accent-soft), transparent 70%),
-    linear-gradient(180deg, var(--ink-800), var(--ink-900));
   z-index: 0;
+  background:
+    radial-gradient(58% 64% at 50% 6%, var(--accent-soft), transparent 68%),
+    radial-gradient(46% 50% at 84% 100%, var(--magenta-soft), transparent 70%),
+    linear-gradient(180deg, var(--ink-850), var(--ink-900));
+}
+
+/* Faint vertical grain that reads as film-strip sprockets. */
+.idx-hero__grid {
+  position: absolute;
+  inset: -10% -2% 0;
+  z-index: 0;
+  opacity: 0.5;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 22%, #000 70%, transparent);
+  mask-image: linear-gradient(180deg, transparent, #000 22%, #000 70%, transparent);
+}
+
+/* Drifting light streaks: thin neon lines that pan across the hero. */
+.idx-hero__streaks {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.idx-streak {
+  position: absolute;
+  left: -30%;
+  width: 160%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--accent-line),
+    transparent
+  );
+  opacity: 0.34;
+  filter: blur(0.3px);
+  will-change: transform;
+}
+
+.idx-streak--magenta {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--magenta-glow),
+    transparent
+  );
+}
+
+/* Soft floating glow orbs for depth. */
+.idx-glow {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.idx-glow--cyan {
+  width: 32rem;
+  height: 32rem;
+  top: -10rem;
+  left: 8%;
+  background: radial-gradient(circle, var(--accent-glow), transparent 66%);
+  opacity: 0.28;
+}
+
+.idx-glow--magenta {
+  width: 28rem;
+  height: 28rem;
+  bottom: -10rem;
+  right: 6%;
+  background: radial-gradient(circle, var(--magenta-glow), transparent 66%);
+  opacity: 0.24;
 }
 
 .idx-hero__inner {
@@ -29,46 +108,135 @@
 }
 
 .idx-hero__eyebrow {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
   color: var(--accent);
-  font-size: 0.85rem;
-  letter-spacing: 0.04em;
+  font-size: 0.82rem;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+}
+
+.idx-hero__dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent-glow);
 }
 
 .idx-hero__title {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(2.4rem, 6vw, 4.2rem);
-  line-height: 1.02;
-  margin: 1rem 0 0.5rem;
-  letter-spacing: -0.02em;
+  font-size: clamp(2.8rem, 8vw, 5.6rem);
+  line-height: 0.98;
+  margin: 1.1rem 0 0.6rem;
+  letter-spacing: -0.03em;
+}
+
+.idx-hero__title-line {
+  display: block;
+}
+
+.idx-hero__title-accent {
+  background: linear-gradient(92deg, var(--accent), var(--magenta));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .idx-hero__tagline {
-  max-width: 44rem;
-  margin: 0 auto;
+  max-width: 42rem;
+  margin: 0.4rem auto 0;
   color: var(--text-dim);
-  font-size: 1.05rem;
+  font-size: clamp(1rem, 1.6vw, 1.18rem);
+  line-height: 1.55;
+}
+
+.idx-hero__stats {
+  display: flex;
+  justify-content: center;
+  gap: clamp(1.4rem, 5vw, 3rem);
+  margin: 2.2rem 0 0;
+  flex-wrap: wrap;
+}
+
+.idx-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.idx-stat__num {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  line-height: 1;
+  color: var(--text-strong);
+}
+
+.idx-stat__label {
+  color: var(--text-faint);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ----- Filter toolbar ----- */
+.idx-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--line);
+  background: rgba(8, 9, 16, 0.72);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+}
+
+.idx-toolbar__inner {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
 }
 
 .idx-search {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  max-width: 30rem;
-  margin: 2rem auto 0.75rem;
+  width: 100%;
+}
+
+.idx-search__field {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.idx-search__icon {
+  position: absolute;
+  left: 0.9rem;
+  color: var(--text-faint);
+  pointer-events: none;
 }
 
 .idx-search__input {
   flex: 1;
+  width: 100%;
   background: var(--ink-700);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: 999px;
   color: var(--text);
   font-family: var(--font-sans);
   font-size: 0.95rem;
-  padding: 0.7rem 1rem;
+  padding: 0.7rem 1rem 0.7rem 2.6rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .idx-search__input::placeholder {
@@ -78,26 +246,66 @@
 .idx-search__input:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .idx-search__count {
-  color: var(--text-faint);
+  color: var(--text-dim);
   font-size: 0.8rem;
   white-space: nowrap;
 }
 
-.idx-cats {
-  color: var(--text-faint);
-  font-size: 0.8rem;
-  margin: 0;
+.idx-search__count strong {
+  color: var(--accent);
+  font-weight: 600;
 }
 
+.idx-cats {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+}
+
+.idx-cat {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: var(--text-dim);
+  background: var(--ink-700);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.idx-cat:hover {
+  color: var(--text);
+  border-color: var(--accent-line);
+}
+
+.idx-cat[aria-pressed='true'] {
+  color: var(--ink-900);
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.idx-cat:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ----- Gallery ----- */
 .idx-main {
   flex: 1;
   width: 100%;
-  max-width: 1180px;
+  max-width: var(--maxw);
   margin: 0 auto;
-  padding: 3rem 1.5rem 4rem;
+  padding: 2rem 1.5rem 4rem;
 }
 
 .idx-grid {
@@ -105,8 +313,8 @@
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.1rem;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 1.2rem;
 }
 
 .idx-card {
@@ -114,39 +322,65 @@
 }
 
 .idx-card__link {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
   width: 100%;
-  padding: 1.4rem 1.4rem 1.2rem;
-  background: var(--ink-800);
-  border: 1px solid var(--line);
+  padding: 1.5rem 1.5rem 1.3rem;
   border-radius: var(--radius);
   text-decoration: none;
+  overflow: hidden;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 18px 40px rgba(0, 0, 0, 0.35);
   transition:
-    transform 0.25s ease,
-    border-color 0.25s ease,
-    background 0.25s ease;
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.28s ease,
+    box-shadow 0.28s ease;
 }
 
-.idx-card__link:hover {
-  transform: translateY(-4px);
-  border-color: var(--accent);
-  background: var(--ink-700);
+/* Neon accent edge along the top of every film frame. */
+.idx-card__link::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--magenta));
+  opacity: 0.55;
+  transition: opacity 0.28s ease;
+}
+
+.idx-card__link:hover,
+.idx-card__link:focus-visible {
+  transform: translateY(-6px);
+  border-color: var(--accent-line);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 24px 60px rgba(0, 0, 0, 0.5),
+    0 0 0 1px var(--accent-soft),
+    0 0 36px var(--accent-soft);
+}
+
+.idx-card__link:hover::before,
+.idx-card__link:focus-visible::before {
+  opacity: 1;
 }
 
 .idx-card__cat {
   color: var(--accent);
-  font-size: 0.72rem;
-  letter-spacing: 0.05em;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .idx-card__title {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 1.3rem;
-  color: var(--text);
+  font-size: 1.32rem;
+  color: var(--text-strong);
   word-break: break-word;
 }
 
@@ -163,13 +397,19 @@
 }
 
 .idx-card__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   color: var(--text-dim);
   font-size: 0.78rem;
-  margin-top: 0.3rem;
+  margin-top: 0.35rem;
+  transition: color 0.2s ease, gap 0.2s ease;
 }
 
-.idx-card__link:hover .idx-card__cta {
+.idx-card__link:hover .idx-card__cta,
+.idx-card__link:focus-visible .idx-card__cta {
   color: var(--accent);
+  gap: 0.6rem;
 }
 
 .idx-empty {
