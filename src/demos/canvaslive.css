@@ -135,6 +135,38 @@
   justify-content: center;
 }
 
+.cl__actions {
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.cl__export {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: var(--radius);
+}
+
+.cl__export-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.cl__export-text {
+  width: 100%;
+  resize: vertical;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: var(--ink-900);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 @media (max-width: 720px) {
   .cl__layout {
     grid-template-columns: 1fr;

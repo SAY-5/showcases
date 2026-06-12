@@ -1,20 +1,27 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import '../styles/demo.css';
 import './canvaslive.css';
 import {
   addShape,
+  canRedoNow,
+  canUndoNow,
+  clearAll,
   deleteShape,
   getSnapshot,
+  redoAction,
   reorderBackward,
   reorderForward,
   reorderToBack,
   reorderToFront,
+  resetAll,
   select,
   setShapes,
+  undoAction,
   updateShape,
 } from './canvaslive/store';
 import { useCanvasStore } from './canvaslive/state';
 import { boundingBox, hitTest, moveShape, resizeShape } from './canvaslive/engine';
+import { toJSON, toSVG } from './canvaslive/export';
 import { HANDLE_IDS, type HandleId, type Point, type Shape } from './canvaslive/types';
 
 // In-browser whiteboard editor. The document (shapes plus selection) lives in a
@@ -48,9 +55,48 @@ export default function CanvasliveDemo() {
   const dragRef = useRef<Drag>(null);
   const [dragging, setDragging] = useState(false);
 
+  const [exportFmt, setExportFmt] = useState<'none' | 'json' | 'svg'>('none');
+  const [copied, setCopied] = useState(false);
+
   const selected = doc.shapes.find((s) => s.id === doc.selectedId) ?? null;
   const ordered = [...doc.shapes].sort((a, b) => a.z - b.z);
   const selBox = selected ? boundingBox([selected]) : null;
+  const undoable = canUndoNow();
+  const redoable = canRedoNow();
+
+  // Keyboard history shortcuts. Cmd/Ctrl+Z undoes; adding Shift redoes. The
+  // listener skips events from form fields so typing in the inspector is safe.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod || e.key.toLowerCase() !== 'z') return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      e.preventDefault();
+      if (e.shiftKey) redoAction();
+      else undoAction();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const exportText =
+    exportFmt === 'json'
+      ? toJSON(doc.shapes)
+      : exportFmt === 'svg'
+        ? toSVG(doc.shapes)
+        : '';
+
+  async function copyExport() {
+    try {
+      await navigator.clipboard.writeText(exportText);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // clipboard may be blocked; the textarea stays selectable as a fallback.
+    }
+  }
 
   // Handlers read the live store snapshot rather than closing over the rendered
   // doc, so a mid-gesture pointer move always patches the freshest shapes array
@@ -138,6 +184,54 @@ export default function CanvasliveDemo() {
         </button>
       </div>
 
+      <div className="demo__controls cl__actions" role="toolbar" aria-label="Document actions">
+        <button
+          type="button"
+          className="demo__btn demo__btn--ghost"
+          onClick={() => undoAction()}
+          disabled={!undoable}
+          aria-keyshortcuts="Control+Z Meta+Z"
+        >
+          Undo
+        </button>
+        <button
+          type="button"
+          className="demo__btn demo__btn--ghost"
+          onClick={() => redoAction()}
+          disabled={!redoable}
+          aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z"
+        >
+          Redo
+        </button>
+        <button
+          type="button"
+          className="demo__btn demo__btn--ghost"
+          onClick={() => setExportFmt(exportFmt === 'json' ? 'none' : 'json')}
+          aria-pressed={exportFmt === 'json'}
+        >
+          Export JSON
+        </button>
+        <button
+          type="button"
+          className="demo__btn demo__btn--ghost"
+          onClick={() => setExportFmt(exportFmt === 'svg' ? 'none' : 'svg')}
+          aria-pressed={exportFmt === 'svg'}
+        >
+          Export SVG
+        </button>
+        <button
+          type="button"
+          className="demo__btn demo__btn--ghost"
+          onClick={() => clearAll()}
+          disabled={doc.shapes.length === 0}
+        >
+          Clear
+        </button>
+        <button type="button" className="demo__btn demo__btn--ghost" onClick={() => resetAll()}>
+          Reset
+        </button>
+      </div>
+
       <div className="cl__layout">
         <div className="cl__stage">
           <svg
@@ -194,6 +288,27 @@ export default function CanvasliveDemo() {
           )}
         </aside>
       </div>
+
+      {exportFmt !== 'none' ? (
+        <div className="cl__export glass">
+          <div className="cl__export-head">
+            <h4 className="cl__inspector-title">
+              {exportFmt === 'json' ? 'JSON export' : 'SVG export'}
+            </h4>
+            <button type="button" className="demo__btn" onClick={() => copyExport()}>
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+          </div>
+          <textarea
+            className="cl__export-text"
+            readOnly
+            value={exportText}
+            aria-label={`${exportFmt.toUpperCase()} export, read only`}
+            onFocus={(e) => e.currentTarget.select()}
+            rows={8}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
