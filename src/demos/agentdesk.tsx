@@ -153,6 +153,8 @@ export default function AgentdeskDemo() {
         <div className="adx__tabs" role="tablist" aria-label="Console view">
           <button
             role="tab"
+            id="adx-tab-queue"
+            aria-controls="adx-panel-queue"
             aria-selected={view === 'queue'}
             className={`adx__tab ${view === 'queue' ? 'adx__tab--on' : ''}`}
             onClick={() => setView('queue')}
@@ -161,6 +163,8 @@ export default function AgentdeskDemo() {
           </button>
           <button
             role="tab"
+            id="adx-tab-review"
+            aria-controls="adx-panel-review"
             aria-selected={view === 'review'}
             className={`adx__tab ${view === 'review' ? 'adx__tab--on' : ''}`}
             onClick={() => setView('review')}
@@ -169,6 +173,8 @@ export default function AgentdeskDemo() {
           </button>
           <button
             role="tab"
+            id="adx-tab-audit"
+            aria-controls="adx-panel-audit"
             aria-selected={view === 'audit'}
             className={`adx__tab ${view === 'audit' ? 'adx__tab--on' : ''}`}
             onClick={() => setView('audit')}
@@ -189,7 +195,12 @@ export default function AgentdeskDemo() {
       </p>
 
       {view === 'queue' && (
-        <div className="adx__grid">
+        <div
+          className="adx__grid"
+          role="tabpanel"
+          id="adx-panel-queue"
+          aria-labelledby="adx-tab-queue"
+        >
           <section className="adx__queue" aria-label="Inbound queue">
             <div className="adx__panel-head">
               Inbound queue
@@ -500,7 +511,12 @@ function Routing({
   onOverride: (id: string) => void;
 }) {
   return (
-    <div className="adx__routing">
+    <div
+      className="adx__routing"
+      role="tabpanel"
+      id="adx-panel-review"
+      aria-labelledby="adx-tab-review"
+    >
       <div className="adx__lanes">
         <Lane
           title="Resolved"
@@ -709,7 +725,12 @@ function Audit({
   onReset: () => void;
 }) {
   return (
-    <div className="adx__audit-wrap">
+    <div
+      className="adx__audit-wrap"
+      role="tabpanel"
+      id="adx-panel-audit"
+      aria-labelledby="adx-tab-audit"
+    >
       <div className="adx__panel">
         <div className="adx__panel-head">
           Audit trail
