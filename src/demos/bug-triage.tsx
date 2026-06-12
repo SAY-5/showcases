@@ -3,8 +3,20 @@ import { useReducedMotion } from 'framer-motion';
 import '../styles/demo.css';
 import './bug-triage.css';
 import { useBugs } from './bug-triage/state';
-import { createBug } from './bug-triage/store';
-import { computeSeverity, priorityCompare, severityOf } from './bug-triage/engine';
+import {
+  createBug,
+  markDuplicate,
+  setAssignee,
+  setComponent,
+  setStatus,
+} from './bug-triage/store';
+import {
+  completeness,
+  computeSeverity,
+  findDuplicates,
+  priorityCompare,
+  severityOf,
+} from './bug-triage/engine';
 import {
   COMPONENTS,
   IMPACTS,
@@ -43,6 +55,9 @@ type View = 'board' | 'intake';
 export default function BugTriageDemo() {
   const bugs = useBugs();
   const [view, setView] = useState<View>('board');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const selected = selectedId ? (bugs.find((b) => b.id === selectedId) ?? null) : null;
 
   return (
     <div className="demo bt">
@@ -66,7 +81,11 @@ export default function BugTriageDemo() {
       {view === 'intake' ? (
         <IntakeForm onFiled={() => setView('board')} />
       ) : (
-        <Board bugs={bugs} />
+        <Board bugs={bugs} onSelect={setSelectedId} />
+      )}
+
+      {selected && (
+        <BugDetail bug={selected} bugs={bugs} onClose={() => setSelectedId(null)} />
       )}
     </div>
   );
@@ -258,7 +277,7 @@ function SeverityPreview({ severity, score }: { severity: Severity; score: numbe
 
 // ---------- board ----------
 
-function Board({ bugs }: { bugs: Bug[] }) {
+function Board({ bugs, onSelect }: { bugs: Bug[]; onSelect: (id: string) => void }) {
   const reduce = useReducedMotion();
   const columns = useMemo(() => {
     const byStatus: Record<Status, Bug[]> = {
@@ -283,7 +302,7 @@ function Board({ bugs }: { bugs: Bug[] }) {
           <ul className="bt__cards">
             {columns[status].map((bug) => (
               <li key={bug.id}>
-                <BugCard bug={bug} animate={!reduce} />
+                <BugCard bug={bug} animate={!reduce} onSelect={onSelect} />
               </li>
             ))}
             {columns[status].length === 0 && <li className="bt__empty">No bugs</li>}
@@ -294,19 +313,214 @@ function Board({ bugs }: { bugs: Bug[] }) {
   );
 }
 
-function BugCard({ bug, animate }: { bug: Bug; animate: boolean }) {
+function BugCard({
+  bug,
+  animate,
+  onSelect,
+}: {
+  bug: Bug;
+  animate: boolean;
+  onSelect: (id: string) => void;
+}) {
   const sev = severityOf(bug).severity;
   return (
-    <article className={`bt__card bt__sev--${sev}${animate ? ' bt__card--anim' : ''}`}>
-      <div className="bt__card-top">
+    <button
+      type="button"
+      className={`bt__card bt__sev--${sev}${animate ? ' bt__card--anim' : ''}`}
+      onClick={() => onSelect(bug.id)}
+      aria-label={`Open ${bug.id}: ${bug.title}`}
+    >
+      <span className="bt__card-top">
         <span className="bt__id mono">{bug.id}</span>
         <span className={`bt__chip bt__chip--${sev}`}>{SEVERITY_LABEL[sev]}</span>
-      </div>
-      <p className="bt__card-title">{bug.title}</p>
-      <div className="bt__card-meta">
+      </span>
+      <span className="bt__card-title">{bug.title}</span>
+      <span className="bt__card-meta">
         <span>{bug.component ?? 'unassigned component'}</span>
         <span>{bug.assignee ?? 'unassigned'}</span>
+      </span>
+    </button>
+  );
+}
+
+// ---------- detail ----------
+
+function BugDetail({
+  bug,
+  bugs,
+  onClose,
+}: {
+  bug: Bug;
+  bugs: Bug[];
+  onClose: () => void;
+}) {
+  const result = severityOf(bug);
+  const ready = completeness(bug);
+  const dupes = useMemo(() => findDuplicates(bug, bugs), [bug, bugs]);
+  const [statusError, setStatusError] = useState<string[]>([]);
+
+  function tryStatus(status: Status) {
+    const r = setStatus(bug.id, status);
+    setStatusError(r.ok ? [] : r.missing);
+  }
+
+  const dupTarget = bug.duplicateOf
+    ? (bugs.find((b) => b.id === bug.duplicateOf) ?? null)
+    : null;
+
+  return (
+    <div
+      className="bt__detail glass"
+      role="dialog"
+      aria-modal="false"
+      aria-label={`Bug ${bug.id} detail`}
+    >
+      <header className="bt__detail-head">
+        <div>
+          <span className="bt__id mono">{bug.id}</span>
+          <h4 className="bt__detail-title">{bug.title}</h4>
+        </div>
+        <button type="button" className="bt__close" onClick={onClose} aria-label="Close detail">
+          Close
+        </button>
+      </header>
+
+      {bug.description && <p className="bt__detail-desc">{bug.description}</p>}
+
+      <dl className="bt__facts">
+        <Fact label="Component" value={bug.component ?? 'unset'} />
+        <Fact label="Impact" value={bug.userImpact} />
+        <Fact label="Reproducibility" value={bug.reproducibility} />
+        <Fact label="Regression" value={bug.regression ? 'yes' : 'no'} />
+        <Fact label="Assignee" value={bug.assignee ?? 'unset'} />
+        <Fact label="Status" value={STATUS_LABEL[bug.status]} />
+      </dl>
+
+      <div className={`bt__sevbox bt__sev--${result.severity}`}>
+        <div className="bt__sevbox-head">
+          <span className="bt__preview-label">Computed severity</span>
+          <span className="bt__preview-value">
+            {SEVERITY_LABEL[result.severity]}{' '}
+            <span className="bt__preview-score">({result.score} pts)</span>
+          </span>
+        </div>
+        <ul className="bt__factors">
+          {result.factors.map((f) => (
+            <li key={f.label}>
+              <span>{f.label}</span>
+              <span className="mono">
+                {f.points >= 0 ? '+' : ''}
+                {f.points}
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
-    </article>
+
+      {dupTarget && (
+        <p className="bt__dup-note">
+          Marked duplicate of <span className="mono">{dupTarget.id}</span>.{' '}
+          <button
+            type="button"
+            className="bt__link"
+            onClick={() => markDuplicate(bug.id, null)}
+          >
+            Unmark
+          </button>
+        </p>
+      )}
+
+      {!dupTarget && dupes.length > 0 && (
+        <section className="bt__dupes" aria-label="Likely duplicates">
+          <h5>Likely duplicates</h5>
+          <ul>
+            {dupes.map((d) => (
+              <li key={d.bug.id}>
+                <span className="bt__dup-title">
+                  <span className="mono">{d.bug.id}</span> {d.bug.title}
+                </span>
+                <span className="bt__dup-score mono">
+                  {Math.round(d.similarity * 100)}% match
+                </span>
+                <button
+                  type="button"
+                  className="bt__link"
+                  onClick={() => markDuplicate(bug.id, d.bug.id)}
+                >
+                  Mark duplicate
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className="bt__triage" aria-label="Triage actions">
+        <h5>Triage</h5>
+        <div className="bt__row">
+          <div className="bt__field">
+            <label htmlFor="bt-d-component">Component</label>
+            <select
+              id="bt-d-component"
+              value={bug.component ?? ''}
+              onChange={(e) =>
+                setComponent(bug.id, (e.target.value || null) as Component | null)
+              }
+            >
+              <option value="">unset</option>
+              {COMPONENTS.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="bt__field">
+            <label htmlFor="bt-d-assignee">Assignee</label>
+            <input
+              id="bt-d-assignee"
+              value={bug.assignee ?? ''}
+              onChange={(e) => setAssignee(bug.id, e.target.value)}
+              placeholder="who owns it"
+              autoComplete="off"
+            />
+          </div>
+        </div>
+
+        <div className="bt__statusrow" role="group" aria-label="Set status">
+          {STATUSES.map((s) => (
+            <button
+              key={s}
+              type="button"
+              className={`bt__statusbtn${bug.status === s ? ' bt__statusbtn--on' : ''}`}
+              aria-pressed={bug.status === s}
+              onClick={() => tryStatus(s)}
+            >
+              {STATUS_LABEL[s]}
+            </button>
+          ))}
+        </div>
+
+        {!ready.ready && (
+          <p className="bt__warn" role="alert">
+            Needs {ready.missing.join(' and ')} before it can leave New.
+          </p>
+        )}
+        {statusError.length > 0 && (
+          <p className="bt__warn" role="alert">
+            Cannot move: missing {statusError.join(' and ')}.
+          </p>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bt__fact">
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+    </div>
   );
 }
