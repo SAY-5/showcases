@@ -5,6 +5,12 @@ import './Showcase.css';
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
+const streaks = [
+  { top: '28%', duration: 14, delay: 0, magenta: false },
+  { top: '52%', duration: 18, delay: 2.1, magenta: true },
+  { top: '71%', duration: 16, delay: 1.4, magenta: false },
+];
+
 type ShowcaseProps = {
   data: ProjectData;
   Demo: ComponentType;
@@ -38,6 +44,40 @@ export function Showcase({ data, Demo, homeHref = '/' }: ShowcaseProps) {
     <div className="sc">
       <header className="sc-hero">
         <div className="sc-hero__bg" aria-hidden="true" />
+        <div className="sc-hero__streaks" aria-hidden="true">
+          {streaks.map((s, i) => (
+            <motion.span
+              key={i}
+              className={`sc-streak${s.magenta ? ' sc-streak--magenta' : ''}`}
+              style={{ top: s.top }}
+              initial={reduce ? false : { x: '-12%', opacity: 0 }}
+              animate={
+                reduce ? undefined : { x: ['-12%', '12%'], opacity: [0, 0.32, 0] }
+              }
+              transition={
+                reduce
+                  ? undefined
+                  : {
+                      duration: s.duration,
+                      delay: s.delay,
+                      repeat: Infinity,
+                      ease: 'linear',
+                    }
+              }
+            />
+          ))}
+        </div>
+        <motion.div
+          className="sc-hero__glow"
+          aria-hidden="true"
+          animate={
+            reduce ? undefined : { scale: [1, 1.12, 1], opacity: [0.22, 0.32, 0.22] }
+          }
+          transition={
+            reduce ? undefined : { duration: 12, repeat: Infinity, ease: 'easeInOut' }
+          }
+        />
+
         <div className="sc-hero__inner">
           <motion.span className="sc-hero__eyebrow mono" {...rise(0.05)}>
             {data.category}
@@ -66,12 +106,15 @@ export function Showcase({ data, Demo, homeHref = '/' }: ShowcaseProps) {
 
       <main>
         <motion.section id="demo" className="sc-section sc-demo" {...onScroll()}>
-          <div className="sc-section__head">
-            <span className="sc-kicker mono">Interactive demo</span>
-            <p className="sc-demo__concept">{data.demoConcept}</p>
-          </div>
-          <div className="sc-demo__frame">
-            <Demo />
+          <div className="sc-frame glass">
+            <div className="sc-frame__edge" aria-hidden="true" />
+            <div className="sc-frame__head">
+              <span className="sc-kicker mono">Interactive demo</span>
+              <p className="sc-frame__concept">{data.demoConcept}</p>
+            </div>
+            <div className="sc-frame__stage">
+              <Demo />
+            </div>
           </div>
         </motion.section>
 
@@ -82,7 +125,7 @@ export function Showcase({ data, Demo, homeHref = '/' }: ShowcaseProps) {
           </div>
           <ul className="sc-highlights">
             {data.highlights.map((h, i) => (
-              <motion.li className="sc-highlight" key={i} {...onScroll(i * 0.04)}>
+              <motion.li className="sc-highlight glass" key={i} {...onScroll(i * 0.04)}>
                 <span className="sc-highlight__num mono">
                   {String(i + 1).padStart(2, '0')}
                 </span>

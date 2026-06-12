@@ -2,7 +2,7 @@
   min-height: 100vh;
 }
 
-/* Hero */
+/* ----- Hero ----- */
 .sc-hero {
   position: relative;
   min-height: 92vh;
@@ -15,14 +15,57 @@
 .sc-hero__bg {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(circle at 78% 28%, var(--accent-soft), transparent 46%),
-    radial-gradient(circle at 12% 88%, rgba(255, 91, 41, 0.06), transparent 42%);
+  z-index: 0;
   pointer-events: none;
+  background:
+    radial-gradient(58% 60% at 78% 22%, var(--accent-soft), transparent 64%),
+    radial-gradient(50% 56% at 10% 92%, var(--magenta-soft), transparent 66%),
+    linear-gradient(180deg, var(--ink-850), var(--ink-900));
+}
+
+/* Drifting neon light streaks that pan across the hero. */
+.sc-hero__streaks {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.sc-streak {
+  position: absolute;
+  left: -30%;
+  width: 160%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-line), transparent);
+  opacity: 0.32;
+  filter: blur(0.3px);
+  will-change: transform;
+}
+
+.sc-streak--magenta {
+  background: linear-gradient(90deg, transparent, var(--magenta-glow), transparent);
+}
+
+/* Soft breathing glow orb for depth. */
+.sc-hero__glow {
+  position: absolute;
+  z-index: 0;
+  width: 34rem;
+  height: 34rem;
+  top: -8rem;
+  right: 4%;
+  border-radius: 50%;
+  filter: blur(64px);
+  pointer-events: none;
+  will-change: transform, opacity;
+  background: radial-gradient(circle, var(--accent-glow), transparent 66%);
+  opacity: 0.26;
 }
 
 .sc-hero__inner {
   position: relative;
+  z-index: 1;
   max-width: var(--maxw);
   margin: 0 auto;
   padding: 7rem 1.5rem 5rem;
@@ -36,7 +79,7 @@
   text-transform: uppercase;
   color: var(--accent);
   padding: 0.35rem 0.7rem;
-  border: 1px solid var(--accent);
+  border: 1px solid var(--accent-line);
   border-radius: 999px;
 }
 
@@ -47,12 +90,17 @@
   letter-spacing: -0.03em;
   line-height: 0.98;
   margin: 1.4rem 0 0;
+  background: linear-gradient(92deg, var(--text-strong) 30%, var(--accent), var(--magenta));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 60px rgba(61, 240, 255, 0.18);
 }
 
 .sc-hero__tagline {
   font-size: clamp(1.15rem, 2.6vw, 1.6rem);
   color: var(--text-dim);
-  max-width: 34ch;
+  max-width: 38ch;
   margin: 1.4rem 0 0;
 }
 
@@ -73,7 +121,8 @@
   padding: 0.8rem 1.4rem;
   border-radius: 999px;
   border: 1px solid transparent;
-  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  transition: transform 0.15s ease, background 0.15s ease,
+    border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .sc-btn:hover {
@@ -83,6 +132,11 @@
 .sc-btn--primary {
   background: var(--accent);
   color: var(--ink-900);
+  box-shadow: 0 0 0 1px var(--accent-soft), 0 8px 30px var(--accent-soft);
+}
+
+.sc-btn--primary:hover {
+  box-shadow: 0 0 0 1px var(--accent), 0 10px 40px var(--accent-glow);
 }
 
 .sc-btn--ghost {
@@ -94,7 +148,7 @@
   border-color: var(--accent);
 }
 
-/* Sections */
+/* ----- Sections ----- */
 .sc-section {
   max-width: var(--maxw);
   margin: 0 auto;
@@ -114,22 +168,43 @@
   margin-bottom: 0.9rem;
 }
 
-.sc-demo__concept {
+/* ----- Demo: editing-workstation frame ----- */
+.sc-frame {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* Thin neon top edge, matching the index film frames. */
+.sc-frame__edge {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--magenta));
+  opacity: 0.7;
+}
+
+.sc-frame__head {
+  padding: clamp(1.2rem, 3vw, 1.8rem) clamp(1.2rem, 3vw, 2rem) 0;
+}
+
+.sc-frame__concept {
   font-size: clamp(1.05rem, 2.2vw, 1.35rem);
   color: var(--text);
   max-width: 60ch;
   margin: 0;
 }
 
-.sc-demo__frame {
+.sc-frame__stage {
+  margin: clamp(1.2rem, 3vw, 1.8rem);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: calc(var(--radius) - 4px);
   background: var(--ink-800);
   padding: clamp(1rem, 3vw, 2rem);
   overflow: hidden;
 }
 
-/* How it works */
+/* ----- How it works ----- */
 .sc-how {
   border-top: 1px solid var(--line);
 }
@@ -146,20 +221,39 @@
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 1px;
-  background: var(--line);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  overflow: hidden;
+  gap: 1rem;
 }
 
 .sc-highlight {
+  position: relative;
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 1.2rem;
   align-items: start;
   padding: 1.5rem;
-  background: var(--ink-800);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.sc-highlight::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: linear-gradient(180deg, var(--accent), var(--magenta));
+  opacity: 0.55;
+  transition: opacity 0.25s ease;
+}
+
+.sc-highlight:hover {
+  border-color: var(--accent-line);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 18px 44px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--accent-soft);
+}
+
+.sc-highlight:hover::before {
+  opacity: 1;
 }
 
 .sc-highlight__num {
@@ -187,9 +281,15 @@
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--ink-700);
+  transition: color 0.2s ease, border-color 0.2s ease;
 }
 
-/* Footer */
+.sc-chip:hover {
+  color: var(--text);
+  border-color: var(--accent-line);
+}
+
+/* ----- Footer ----- */
 .sc-footer {
   border-top: 1px solid var(--line);
   padding: 4rem 1.5rem 5rem;
@@ -246,5 +346,19 @@
   .sc-footer__inner {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+/* ----- Reduced motion: hold backdrop layers still. ----- */
+@media (prefers-reduced-motion: reduce) {
+  .sc-streak,
+  .sc-hero__glow {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .sc-btn:hover,
+  .sc-highlight:hover {
+    transform: none;
   }
 }
