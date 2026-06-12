@@ -221,6 +221,11 @@ export function finish(): void {
   set({ phase: 'result' });
 }
 
+// Return from the result view to the questions without discarding answers.
+export function resume(): void {
+  set({ phase: 'taking' });
+}
+
 export function restart(): void {
   writeJSON(ANSWERS_KEY, {});
   set({ answers: {}, step: 0, phase: 'taking' });
