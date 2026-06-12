@@ -14,14 +14,26 @@ import {
   type Operator,
   type Rule,
 } from './clientflow/types';
-import { describeAction, describeCondition, evaluate } from './clientflow/engine';
+import {
+  describeAction,
+  describeCondition,
+  evaluate,
+  validateRuleSet,
+  type ValidationError,
+} from './clientflow/engine';
 import { useStore } from './clientflow/state';
 import {
+  activateVersion,
   activeVersion,
   addRule,
   deleteRule,
+  loadVersionIntoDraft,
+  publishDraft,
+  resetAll,
   toggleRule,
+  type State,
 } from './clientflow/store';
+import type { Version } from './clientflow/types';
 
 // In-browser no-code rules engine. The schema, condition tree, actions, and the
 // safe interpreter all run client-side; the rule set persists in localStorage.
@@ -61,7 +73,7 @@ export default function ClientflowDemo() {
 
       {view === 'build' && <Builder rules={state.draft} />}
       {view === 'run' && <RunPanel />}
-      {view === 'versions' && <VersionsPlaceholder />}
+      {view === 'versions' && <VersionsPanel state={state} />}
     </div>
   );
 }
@@ -92,6 +104,7 @@ function TabButton({
 }
 
 function Builder({ rules }: { rules: Rule[] }) {
+  const errors = useMemo(() => validateRuleSet(rules), [rules]);
   return (
     <div className="cf__stage">
       <RuleForm />
@@ -99,6 +112,13 @@ function Builder({ rules }: { rules: Rule[] }) {
         <div className="cf__list-head">
           Draft rules
           <span className="cf__count">{rules.length}</span>
+          {errors.length === 0 && rules.length > 0 ? (
+            <span className="cf__valid cf__valid--ok">valid</span>
+          ) : errors.length > 0 ? (
+            <span className="cf__valid cf__valid--bad">
+              {errors.length} issue{errors.length > 1 ? 's' : ''}
+            </span>
+          ) : null}
         </div>
         {rules.length === 0 && (
           <p className="cf__empty">No rules yet. Add one above.</p>
@@ -106,6 +126,7 @@ function Builder({ rules }: { rules: Rule[] }) {
         {rules.map((rule) => (
           <RuleRow key={rule.id} rule={rule} />
         ))}
+        {errors.length > 0 && <ErrorList errors={errors} />}
       </div>
     </div>
   );
@@ -548,6 +569,187 @@ function DecisionView({ decision }: { decision: Decision }) {
   );
 }
 
-function VersionsPlaceholder() {
-  return <p className="cf__empty">Versioning is in the next step.</p>;
+function ErrorList({ errors }: { errors: ValidationError[] }) {
+  return (
+    <div className="cf__errors" role="alert">
+      <span className="cf__errors-head">Cannot publish until these are fixed</span>
+      <ul className="cf__errors-list">
+        {errors.map((e, i) => (
+          <li key={`${e.path}-${i}`}>
+            <span className="cf__errors-path">{e.path}</span> {e.message}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function VersionsPanel({ state }: { state: State }) {
+  const draftErrors = useMemo(
+    () => validateRuleSet(state.draft),
+    [state.draft],
+  );
+  const [note, setNote] = useState('');
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [dryId, setDryId] = useState<number | null>(null);
+
+  function onPublish() {
+    const result = publishDraft(note.trim());
+    if (!result.ok) {
+      setFeedback(`Publish rejected: ${result.errors.length} validation issue(s).`);
+      return;
+    }
+    setNote('');
+    setFeedback(`Published v${result.version.id} and made it active.`);
+  }
+
+  const versionsDesc = [...state.versions].reverse();
+
+  return (
+    <div className="cf__stage">
+      <div className="cf__publish">
+        <div className="cf__panel-head">Publish current draft</div>
+        <p className="cf__publish-note">
+          Publishing snapshots the draft into a new retained version and
+          activates it atomically. An invalid draft is rejected and nothing
+          changes.
+        </p>
+        <div className="cf__publish-row">
+          <input
+            className="cf__input cf__publish-input"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="version note (optional)"
+            aria-label="version note"
+          />
+          <button
+            type="button"
+            className="demo__btn"
+            onClick={onPublish}
+            disabled={draftErrors.length > 0}
+          >
+            Publish version
+          </button>
+        </div>
+        {draftErrors.length > 0 && <ErrorList errors={draftErrors} />}
+        {feedback && <p className="cf__feedback">{feedback}</p>}
+      </div>
+
+      <div className="cf__panel">
+        <div className="cf__panel-head">
+          Versions
+          <span className="cf__count">{state.versions.length}</span>
+        </div>
+        {state.versions.length === 0 && (
+          <p className="cf__empty">
+            No versions yet. Publish the draft to create v1.
+          </p>
+        )}
+        {versionsDesc.map((v) => {
+          const isActive = v.id === state.activeId;
+          return (
+            <div
+              key={v.id}
+              className="cf__ver-row"
+              data-active={String(isActive)}
+            >
+              <div className="cf__ver-main">
+                <span className="cf__ver-id">v{v.id}</span>
+                <span className="cf__ver-meta">
+                  {v.rules.length} rule{v.rules.length === 1 ? '' : 's'}
+                  {v.note ? ` · ${v.note}` : ''}
+                </span>
+              </div>
+              <div className="cf__ver-tools">
+                {isActive ? (
+                  <span className="cf__chip" data-on="true">
+                    active
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    className="cf__chip"
+                    onClick={() => activateVersion(v.id)}
+                  >
+                    activate
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="cf__chip"
+                  onClick={() => setDryId(dryId === v.id ? null : v.id)}
+                  aria-pressed={dryId === v.id}
+                >
+                  {dryId === v.id ? 'hide dry-run' : 'dry-run'}
+                </button>
+                <button
+                  type="button"
+                  className="cf__chip"
+                  onClick={() => loadVersionIntoDraft(v.id)}
+                >
+                  load to draft
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {dryId !== null && <DryRunView version={state.versions.find((v) => v.id === dryId) ?? null} />}
+
+      <div className="cf__danger-zone">
+        <span className="cf__danger-text">
+          Reset clears the draft, every version, and the active pointer.
+        </span>
+        <button
+          type="button"
+          className="demo__btn demo__btn--ghost"
+          onClick={() => {
+            resetAll();
+            setFeedback('Reset to the seed draft. No versions remain.');
+            setDryId(null);
+          }}
+        >
+          Reset everything
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DryRunView({ version }: { version: Version | null }) {
+  const [input, setInput] = useState<Input>(defaultInput);
+  const decision = useMemo(
+    () => (version ? evaluate(version.rules, input) : null),
+    [version, input],
+  );
+  if (!version || !decision) return null;
+
+  function setField(name: string, value: FieldValue) {
+    setInput((prev) => ({ ...prev, [name]: value }));
+  }
+
+  return (
+    <div className="cf__dryrun" aria-label={`dry run of v${version.id}`}>
+      <div className="cf__panel-head">
+        Dry-run v{version.id}
+        <span className="cf__source">does not activate</span>
+      </div>
+      <p className="cf__publish-note">
+        Evaluates the candidate version against a sample input. The active
+        version is untouched.
+      </p>
+      <div className="cf__run-grid">
+        <div className="cf__dryrun-input">
+          {schema.map((f) => (
+            <div className="cf__field" key={f.name}>
+              <span className="cf__field-key">{f.name}</span>
+              <InputField def={f} value={input[f.name]} onChange={setField} />
+            </div>
+          ))}
+        </div>
+        <DecisionView decision={decision} />
+      </div>
+    </div>
+  );
 }
