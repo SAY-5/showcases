@@ -6,6 +6,7 @@ import { SKILLS, bank, skillLabel, type Question, type Skill } from './learnloop
 import { useSession } from './learnloop/state';
 import {
   nextQuestion,
+  resetSession,
   skillSummaries,
   submitAnswer,
   type LogEntry,
@@ -14,6 +15,7 @@ import {
   COOLDOWN,
   K,
   TARGET,
+  bucketFor,
   bucketLabel,
   expectedSuccess,
   rank,
@@ -75,6 +77,12 @@ export default function LearnloopDemo() {
 
   const onNext = useCallback(() => setGraded(null), []);
 
+  // Clear the persisted session and start over from the base rating.
+  const onReset = useCallback(() => {
+    setGraded(null);
+    resetSession();
+  }, []);
+
   function pickSkill(next: Skill) {
     setGraded(null);
     setSkill(next);
@@ -130,9 +138,14 @@ export default function LearnloopDemo() {
           nextDiff={selected?.diff}
           nextExpected={selected ? expectedSuccess(rating, selected.diff) : null}
         />
+
+        <SessionLog log={session.log} reduce={!!reduce} />
       </div>
 
       <div className="demo__controls">
+        <button className="demo__btn demo__btn--ghost" onClick={onReset}>
+          Reset session
+        </button>
         <span className="demo__hint">
           K {K} · target {Math.round(TARGET * 100)}% · cooldown {COOLDOWN} ·{' '}
           {session.answered} answered
@@ -261,6 +274,69 @@ function Readouts({
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+// ---------- session log and progress ----------
+
+function SessionLog({ log, reduce }: { log: LogEntry[]; reduce: boolean }) {
+  if (log.length === 0) {
+    return (
+      <div className="lla__log glass">
+        <div className="lla__panel-title">Session progress</div>
+        <p className="lla__card-empty">
+          No answers yet. The log is event sourced: each row records the rating
+          before and after, and ratings are a fold over it.
+        </p>
+      </div>
+    );
+  }
+
+  // Show the most recent answers. A mastery transition is flagged when an
+  // answer's rating crosses a bucket boundary in either direction.
+  const rows = log.slice(0, 8);
+
+  return (
+    <div className="lla__log glass">
+      <div className="lla__panel-title">Session progress</div>
+      <ol className="lla__log-list">
+        {rows.map((e) => {
+          const fromBucket = bucketFor(e.before);
+          const toBucket = bucketFor(e.after);
+          const moved = fromBucket !== toBucket;
+          const delta = e.after - e.before;
+          return (
+            <motion.li
+              key={e.n}
+              className="lla__log-row"
+              initial={{ opacity: reduce ? 1 : 0, x: reduce ? 0 : -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: reduce ? 0 : 0.25, ease }}
+            >
+              <span className="lla__log-n">#{e.n}</span>
+              <span className={`lla__log-mark ${e.correct ? 'is-ok' : 'is-bad'}`}>
+                {e.correct ? 'correct' : 'missed'}
+              </span>
+              <span className="lla__log-skill">{skillLabel(e.skill)}</span>
+              <span className="lla__log-delta">
+                {e.before}
+                <span aria-hidden="true"> {'->'} </span>
+                {e.after}
+                <b>
+                  {delta >= 0 ? ' +' : ' '}
+                  {delta}
+                </b>
+              </span>
+              {moved && (
+                <span className="lla__log-transition">
+                  {bucketLabel(toBucket)}
+                </span>
+              )}
+            </motion.li>
+          );
+        })}
+      </ol>
     </div>
   );
 }
