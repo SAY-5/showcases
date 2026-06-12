@@ -65,6 +65,11 @@ export default function FlowdeckDemo() {
 
       <SubmitForm />
 
+      <p className="fd2__sr-only" aria-live="polite">
+        {items.filter((i) => i.stage !== 'approved').length} requests in flight,{' '}
+        {completed.length} approved.
+      </p>
+
       <section className="fd2__pipeline" aria-label="workflow pipeline">
         {buckets.map((bucket) => (
           <PipelineColumn
