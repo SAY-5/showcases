@@ -9,6 +9,188 @@
   --gg-na: var(--text-faint);
 }
 
+/* ---------- scorecard ---------- */
+
+.gg__scorecard {
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-top: 18px;
+  display: grid;
+  gap: 18px;
+}
+
+.gg__score {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+
+.gg__score-num {
+  display: flex;
+  align-items: baseline;
+  font-family: var(--font-display);
+  line-height: 1;
+}
+
+.gg__score-pct {
+  font-size: 3.2rem;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.gg__score-unit {
+  font-size: 1.4rem;
+  color: var(--text-dim);
+  margin-left: 2px;
+}
+
+.gg__score-meta {
+  display: grid;
+  gap: 8px;
+  flex: 1 1 260px;
+}
+
+.gg__gate {
+  justify-self: start;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 14px;
+  border-radius: 999px;
+}
+
+.gg__gate.is-pass {
+  color: var(--ink-900);
+  background: var(--ok);
+}
+
+.gg__gate.is-fail {
+  color: var(--text-strong);
+  background: var(--magenta);
+}
+
+.gg__score-cap {
+  color: var(--text-dim);
+  font-size: 0.88rem;
+}
+
+.gg__threshold {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.gg__threshold-cap {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+}
+
+.gg__threshold input[type='range'] {
+  flex: 1 1 auto;
+  accent-color: var(--accent);
+}
+
+.gg__threshold-val {
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+  color: var(--accent);
+  min-width: 3ch;
+  text-align: right;
+}
+
+.gg__tally {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.gg__tally-item {
+  display: grid;
+  gap: 2px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--paper-dim);
+  min-width: 72px;
+  text-align: center;
+}
+
+.gg__tally-n {
+  font-family: var(--font-mono);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.gg__tally-cap {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-dim);
+}
+
+.gg__tally--met {
+  border-color: var(--gg-met);
+}
+.gg__tally--partial {
+  border-color: var(--gg-partial);
+}
+.gg__tally--not-met {
+  border-color: var(--gg-notmet);
+}
+.gg__tally--n-a {
+  border-color: var(--gg-na);
+}
+
+.gg__bars {
+  display: grid;
+  gap: 8px;
+}
+
+.gg__bar-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 3fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.gg__bar-name {
+  font-size: 0.84rem;
+  color: var(--text);
+}
+
+.gg__bar-track {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--ink-700);
+  overflow: hidden;
+}
+
+.gg__bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--magenta));
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gg__bar-pct {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  min-width: 4ch;
+  text-align: right;
+}
+
 /* ---------- controls ---------- */
 
 .gg__controls {

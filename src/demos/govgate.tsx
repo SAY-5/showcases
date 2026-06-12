@@ -9,10 +9,18 @@
 import '../styles/demo.css';
 import './govgate.css';
 
+import { useMemo } from 'react';
+
 import { useGovStore } from './govgate/state';
-import { setControlNote, setControlStatus } from './govgate/store';
+import { setControlNote, setControlStatus, setThreshold } from './govgate/store';
 import { groupByCategory, STATUS_LABEL, STATUS_ORDER, SEVERITY_LABEL } from './govgate/format';
-import { resultFor } from './govgate/engine';
+import {
+  categoryBreakdown,
+  resultFor,
+  scoreAssessment,
+  statusCounts,
+} from './govgate/engine';
+import type { Assessment, Framework } from './govgate/types';
 
 export default function GovgateDemo() {
   const { framework, assessment } = useGovStore();
@@ -28,6 +36,8 @@ export default function GovgateDemo() {
         your threshold, breaks it down by category, and lists the gaps to fix
         first. Everything persists in your browser.
       </p>
+
+      <Scorecard framework={framework} assessment={assessment} />
 
       <section className="gg__controls" aria-label="Controls">
         {groups.map((group) => (
@@ -92,5 +102,98 @@ export default function GovgateDemo() {
         ))}
       </section>
     </div>
+  );
+}
+
+// The scorecard: the headline weighted compliance percent against the threshold
+// with a pass or fail badge, a threshold slider, per-category bars, and a tally
+// of controls by status. All numbers come from the pure engine.
+function Scorecard({
+  framework,
+  assessment,
+}: {
+  framework: Framework;
+  assessment: Assessment;
+}) {
+  const score = useMemo(
+    () => scoreAssessment(framework, assessment),
+    [framework, assessment],
+  );
+  const categories = useMemo(
+    () => categoryBreakdown(framework, assessment),
+    [framework, assessment],
+  );
+  const counts = useMemo(
+    () => statusCounts(framework, assessment),
+    [framework, assessment],
+  );
+
+  return (
+    <section className="gg__scorecard glass" aria-label="Scorecard">
+      <div className="gg__score">
+        <div className="gg__score-num" aria-hidden="true">
+          <span className="gg__score-pct">{score.percent}</span>
+          <span className="gg__score-unit">%</span>
+        </div>
+        <div className="gg__score-meta">
+          <span
+            className={`gg__gate ${score.passed ? 'is-pass' : 'is-fail'}`}
+            role="status"
+            aria-live="polite"
+          >
+            {score.passed ? 'Pass' : 'Fail'}
+          </span>
+          <span className="gg__score-cap">
+            Weighted compliance, {score.passed ? 'meets' : 'below'} the {score.threshold}% threshold.
+          </span>
+          <label className="gg__threshold">
+            <span className="gg__threshold-cap">Pass threshold</span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={score.threshold}
+              onChange={(e) => setThreshold(Number(e.target.value))}
+              aria-label="Pass threshold percent"
+            />
+            <output className="gg__threshold-val">{score.threshold}%</output>
+          </label>
+        </div>
+      </div>
+
+      <ul className="gg__tally" aria-label="Control counts by status">
+        {STATUS_ORDER.map((status) => (
+          <li key={status} className={`gg__tally-item gg__tally--${status}`}>
+            <span className="gg__tally-n">{counts[status]}</span>
+            <span className="gg__tally-cap">{STATUS_LABEL[status]}</span>
+          </li>
+        ))}
+        <li className="gg__tally-item gg__tally--total">
+          <span className="gg__tally-n">{counts.total}</span>
+          <span className="gg__tally-cap">Total</span>
+        </li>
+      </ul>
+
+      <div className="gg__bars" aria-label="Compliance by category">
+        {categories.map((cat) => (
+          <div key={cat.category} className="gg__bar-row">
+            <span className="gg__bar-name">{cat.category}</span>
+            <span className="gg__bar-track">
+              <span
+                className="gg__bar-fill"
+                style={{ width: `${cat.percent}%` }}
+                role="meter"
+                aria-valuenow={cat.percent}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`${cat.category} ${cat.percent}% compliant`}
+              />
+            </span>
+            <span className="gg__bar-pct">{cat.percent}%</span>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
