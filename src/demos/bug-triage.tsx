@@ -6,6 +6,7 @@ import { useBugs } from './bug-triage/state';
 import {
   createBug,
   markDuplicate,
+  resetAll,
   setAssignee,
   setComponent,
   setStatus,
@@ -13,6 +14,7 @@ import {
 import {
   completeness,
   computeSeverity,
+  duplicateClusters,
   findDuplicates,
   priorityCompare,
   severityOf,
@@ -21,6 +23,7 @@ import {
   COMPONENTS,
   IMPACTS,
   REPRO,
+  SEVERITIES,
   STATUSES,
   type Bug,
   type Component,
@@ -50,7 +53,7 @@ const SEVERITY_LABEL: Record<Severity, string> = {
   minor: 'Minor',
 };
 
-type View = 'board' | 'intake';
+type View = 'board' | 'intake' | 'dashboard';
 
 export default function BugTriageDemo() {
   const bugs = useBugs();
@@ -76,13 +79,14 @@ export default function BugTriageDemo() {
         <TabButton active={view === 'intake'} onClick={() => setView('intake')}>
           File a bug
         </TabButton>
+        <TabButton active={view === 'dashboard'} onClick={() => setView('dashboard')}>
+          Dashboard
+        </TabButton>
       </div>
 
-      {view === 'intake' ? (
-        <IntakeForm onFiled={() => setView('board')} />
-      ) : (
-        <Board bugs={bugs} onSelect={setSelectedId} />
-      )}
+      {view === 'intake' && <IntakeForm onFiled={() => setView('board')} />}
+      {view === 'board' && <Board bugs={bugs} onSelect={setSelectedId} />}
+      {view === 'dashboard' && <Dashboard bugs={bugs} onSelect={setSelectedId} />}
 
       {selected && (
         <BugDetail bug={selected} bugs={bugs} onClose={() => setSelectedId(null)} />
@@ -521,6 +525,147 @@ function Fact({ label, value }: { label: string; value: string }) {
     <div className="bt__fact">
       <dt>{label}</dt>
       <dd>{value}</dd>
+    </div>
+  );
+}
+
+// ---------- dashboard ----------
+
+function Dashboard({ bugs, onSelect }: { bugs: Bug[]; onSelect: (id: string) => void }) {
+  const stats = useMemo(() => {
+    const bySeverity: Record<Severity, number> = {
+      blocker: 0,
+      critical: 0,
+      major: 0,
+      minor: 0,
+    };
+    const byStatus: Record<Status, number> = {
+      new: 0,
+      triaged: 0,
+      'in-progress': 0,
+      closed: 0,
+    };
+    for (const b of bugs) {
+      if (b.duplicateOf !== null) continue;
+      bySeverity[severityOf(b).severity] += 1;
+      byStatus[b.status] += 1;
+    }
+    return { bySeverity, byStatus };
+  }, [bugs]);
+
+  // Untriaged queue: bugs still in New that fail the completeness gate, ordered
+  // by computed priority so the most urgent gaps surface first.
+  const untriaged = useMemo(
+    () =>
+      bugs
+        .filter((b) => b.status === 'new' && b.duplicateOf === null && !completeness(b).ready)
+        .sort(priorityCompare),
+    [bugs],
+  );
+
+  const clusters = useMemo(() => duplicateClusters(bugs), [bugs]);
+
+  function reset() {
+    resetAll();
+  }
+
+  return (
+    <div className="bt__dash">
+      <div className="bt__statgrid">
+        <StatPanel title="By severity">
+          {SEVERITIES.map((s) => (
+            <StatRow key={s} className={`bt__sev--${s}`} label={SEVERITY_LABEL[s]} value={stats.bySeverity[s]} dot />
+          ))}
+        </StatPanel>
+        <StatPanel title="By status">
+          {STATUSES.map((s) => (
+            <StatRow key={s} label={STATUS_LABEL[s]} value={stats.byStatus[s]} />
+          ))}
+        </StatPanel>
+      </div>
+
+      <section className="bt__queue glass" aria-label="Untriaged queue">
+        <h5>Untriaged queue ({untriaged.length})</h5>
+        {untriaged.length === 0 ? (
+          <p className="bt__empty">Every new bug has a component and assignee.</p>
+        ) : (
+          <ul>
+            {untriaged.map((b) => (
+              <li key={b.id}>
+                <button type="button" className="bt__queue-item" onClick={() => onSelect(b.id)}>
+                  <span className="mono">{b.id}</span>
+                  <span className="bt__queue-title">{b.title}</span>
+                  <span className="bt__queue-missing">
+                    needs {completeness(b).missing.join(' + ')}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="bt__clusters glass" aria-label="Duplicate clusters">
+        <h5>Duplicate clusters ({clusters.length})</h5>
+        {clusters.length === 0 ? (
+          <p className="bt__empty">No likely duplicate groups detected.</p>
+        ) : (
+          <ul>
+            {clusters.map((group) => (
+              <li key={group.map((g) => g.id).join('-')} className="bt__cluster">
+                {group.map((g) => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    className="bt__cluster-chip"
+                    onClick={() => onSelect(g.id)}
+                  >
+                    <span className="mono">{g.id}</span> {g.title}
+                  </button>
+                ))}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <div className="demo__controls">
+        <button type="button" className="demo__btn demo__btn--ghost" onClick={reset}>
+          Reset board
+        </button>
+        <span className="demo__hint">Clears localStorage and restores the seed bugs.</span>
+      </div>
+    </div>
+  );
+}
+
+function StatPanel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="bt__stat glass" aria-label={title}>
+      <h5>{title}</h5>
+      <dl>{children}</dl>
+    </section>
+  );
+}
+
+function StatRow({
+  label,
+  value,
+  className,
+  dot,
+}: {
+  label: string;
+  value: number;
+  className?: string;
+  dot?: boolean;
+}) {
+  return (
+    <div className={`bt__statrow${className ? ' ' + className : ''}`}>
+      <dt>
+        {dot && <span className="bt__dot" aria-hidden="true" />}
+        {label}
+      </dt>
+      <dd className="mono">{value}</dd>
     </div>
   );
 }
