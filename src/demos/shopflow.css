@@ -1,0 +1,252 @@
+/* ShopFlow storefront app. Built on the cinematic theme tokens; the shared
+   demo shell and the legacy .sf__ saga styles live in styles/demo.css, so this
+   file uses an app-scoped .sfa__ prefix to avoid any collision. */
+
+.sfa {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+
+.sfa__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.sfa__bar-spacer {
+  flex: 1 1 auto;
+}
+.sfa__count {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.sfa__count b {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- layout ---------- */
+.sfa__grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+/* ---------- catalog ---------- */
+.sfa__catalog {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.sfa__card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  transition:
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+.sfa__card:hover {
+  border-color: var(--accent-line);
+  transform: translateY(-2px);
+}
+.sfa__card-sku {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.sfa__card-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-strong);
+  line-height: 1.25;
+}
+.sfa__card-blurb {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.4;
+  min-height: 2.6em;
+}
+.sfa__card-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+.sfa__card-price {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+.sfa__card-stock {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.sfa__card-add {
+  margin-left: auto;
+}
+
+/* ---------- cart ---------- */
+.sfa__cart {
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  padding: 16px;
+  position: sticky;
+  top: 12px;
+}
+.sfa__cart-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 12px;
+}
+.sfa__cart-empty {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-faint);
+  padding: 8px 0 4px;
+}
+.sfa__cart-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sfa__row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 12px;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.sfa__row-name {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-strong);
+}
+.sfa__row-unit {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.sfa__row-total {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-strong);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.sfa__qty {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.sfa__qty-btn {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--ink-800);
+  color: var(--text-strong);
+  cursor: pointer;
+  transition: border-color 0.16s ease;
+}
+.sfa__qty-btn:hover {
+  border-color: var(--accent-line);
+}
+.sfa__qty-val {
+  min-width: 28px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+.sfa__row-remove {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.sfa__row-remove:hover {
+  color: var(--magenta);
+}
+.sfa__subtotal {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.sfa__subtotal-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.sfa__subtotal-val {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.sfa__cart-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+.sfa__cart-actions .demo__btn {
+  flex: 1;
+  justify-content: center;
+}
+
+@media (max-width: 720px) {
+  .sfa__grid {
+    grid-template-columns: 1fr;
+  }
+  .sfa__catalog {
+    grid-template-columns: 1fr;
+  }
+  .sfa__cart {
+    position: static;
+  }
+}
