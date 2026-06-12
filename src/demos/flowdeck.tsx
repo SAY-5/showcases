@@ -9,10 +9,21 @@ import { motion, useReducedMotion } from 'framer-motion';
 import './flowdeck.css';
 
 import { useFlowStore } from './flowdeck/state';
-import { ROLES, setActingAs, submitItem } from './flowdeck/store';
-import { bucketByStep, stepApplies } from './flowdeck/engine';
-import { age, fieldText } from './flowdeck/format';
-import type { Item, Role } from './flowdeck/types';
+import {
+  ROLES,
+  approveItem,
+  rejectItem,
+  setActingAs,
+  submitItem,
+} from './flowdeck/store';
+import {
+  bucketByStep,
+  canDecide,
+  currentStep,
+  stepApplies,
+} from './flowdeck/engine';
+import { age, clock, fieldText } from './flowdeck/format';
+import type { HistoryEntry, Item, Role } from './flowdeck/types';
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -75,7 +86,169 @@ export default function FlowdeckDemo() {
           terminal
         />
       </section>
+
+      <ItemDetail
+        item={items.find((i) => i.id === selectedId) ?? null}
+        now={now}
+        onClose={() => setSelectedId(null)}
+      />
     </div>
+  );
+}
+
+function ItemDetail({
+  item,
+  now,
+  onClose,
+}: {
+  item: Item | null;
+  now: number;
+  onClose: () => void;
+}) {
+  const { workflow, actingAs } = useFlowStore();
+  const [note, setNote] = useState('');
+
+  if (!item) {
+    return (
+      <p className="fd2__detail-hint">
+        Select an item to see its fields, its history, and the actions open to
+        you.
+      </p>
+    );
+  }
+
+  const step = currentStep(workflow, item);
+  const mayDecide = canDecide(workflow, item, actingAs);
+  const fieldRows = Object.entries(item.fields);
+
+  function decide(action: 'approve' | 'reject') {
+    if (!item) return;
+    if (action === 'approve') approveItem(item.id, note);
+    else rejectItem(item.id, note);
+    setNote('');
+  }
+
+  return (
+    <section className="fd2__detail glass" aria-label={`detail for ${item.title}`}>
+      <header className="fd2__detail-head">
+        <div>
+          <h4 className="fd2__detail-title">{item.title}</h4>
+          <span className="fd2__detail-id">{item.id}</span>
+        </div>
+        <button
+          type="button"
+          className="fd2__detail-close"
+          onClick={onClose}
+          aria-label="close detail"
+        >
+          ✕
+        </button>
+      </header>
+
+      <dl className="fd2__fields">
+        {fieldRows.map(([key, value]) => (
+          <div className="fd2__field-row" key={key}>
+            <dt>{key}</dt>
+            <dd>{fieldText(value)}</dd>
+          </div>
+        ))}
+        <div className="fd2__field-row">
+          <dt>stage</dt>
+          <dd>
+            {item.stage === 'approved'
+              ? 'approved'
+              : step
+                ? `awaiting ${step.approver}`
+                : 'pending'}
+          </dd>
+        </div>
+      </dl>
+
+      <div className="fd2__detail-grid">
+        <div className="fd2__timeline-wrap">
+          <h5 className="fd2__sub-head">history</h5>
+          <ol className="fd2__timeline">
+            {item.history.map((h) => (
+              <TimelineRow key={h.id} entry={h} now={now} />
+            ))}
+          </ol>
+        </div>
+
+        <div className="fd2__actions">
+          <h5 className="fd2__sub-head">
+            {step ? `current step: ${step.name}` : 'no open step'}
+          </h5>
+          {step && (
+            <>
+              <label className="fd2__note-label" htmlFor="fd2-note">
+                note (optional)
+              </label>
+              <textarea
+                id="fd2-note"
+                className="fd2__note"
+                value={note}
+                rows={2}
+                placeholder={
+                  mayDecide
+                    ? 'Why are you approving or sending this back?'
+                    : `Switch to the ${step.approver} role to act here.`
+                }
+                onChange={(e) => setNote(e.target.value)}
+                disabled={!mayDecide}
+              />
+              <div className="fd2__action-btns">
+                <button
+                  type="button"
+                  className="demo__btn"
+                  onClick={() => decide('approve')}
+                  disabled={!mayDecide}
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  className="demo__btn demo__btn--ghost"
+                  onClick={() => decide('reject')}
+                  disabled={!mayDecide}
+                >
+                  Send back
+                </button>
+              </div>
+              {!mayDecide && (
+                <p className="fd2__locked" role="status">
+                  This step is approved by {step.approver}. You are acting as{' '}
+                  {actingAs}.
+                </p>
+              )}
+            </>
+          )}
+          {!step && (
+            <p className="fd2__locked" role="status">
+              This request has cleared every applicable gate.
+            </p>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TimelineRow({ entry, now }: { entry: HistoryEntry; now: number }) {
+  return (
+    <li className="fd2__tl-row" data-kind={entry.kind}>
+      <span className="fd2__tl-dot" aria-hidden="true" />
+      <div className="fd2__tl-body">
+        <span className="fd2__tl-head">
+          <strong>{entry.kind}</strong>
+          {entry.stepName && <span className="fd2__tl-step">{entry.stepName}</span>}
+          <span className="fd2__tl-actor">{entry.actor}</span>
+        </span>
+        {entry.note && <span className="fd2__tl-note">{entry.note}</span>}
+        <span className="fd2__tl-time">
+          {clock(entry.at)} · {age(entry.at, now)}
+        </span>
+      </div>
+    </li>
   );
 }
 
