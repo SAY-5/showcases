@@ -457,6 +457,12 @@ export default function EquipfleetDemo() {
       {/* ---- DASHBOARD VIEW ---- */}
       {view === 'dashboard' && (
         <section className="efd__dash" aria-label="Fleet dashboard">
+          {/* fleet total */}
+          <div className="efd__fleet-total glass">
+            <span className="efd__fleet-total-count">{assets.length}</span>
+            <span className="efd__fleet-total-label">total assets in fleet</span>
+          </div>
+
           {/* summary cards */}
           <div className="efd__summary">
             {STATUSES.map((s) => (
@@ -514,6 +520,23 @@ export default function EquipfleetDemo() {
                     <span className={`efd__util-dot efd__util-dot--${s}`} />
                     {STATUS_LABEL[s]} {pct.toFixed(0)}%
                   </span>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* category breakdown */}
+          <div className="efd__catbreak glass">
+            <h5 className="efd__catbreak-title">By category</h5>
+            <div className="efd__catbreak-grid">
+              {CATEGORIES.map((c) => {
+                const n = assets.filter((a) => a.category === c).length;
+                if (n === 0) return null;
+                return (
+                  <div key={c} className="efd__catbreak-item">
+                    <span className="efd__catbreak-count">{n}</span>
+                    <span className="efd__catbreak-label">{CATEGORY_LABEL[c]}</span>
+                  </div>
                 );
               })}
             </div>

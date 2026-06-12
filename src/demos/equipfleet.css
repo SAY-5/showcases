@@ -426,6 +426,28 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* fleet total */
+.efd__fleet-total {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 12px;
+}
+.efd__fleet-total-count {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: clamp(36px, 6vw, 52px);
+  line-height: 1;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.efd__fleet-total-label {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
 /* utilization */
 .efd__util {
   border-radius: 12px;
@@ -494,6 +516,47 @@
 }
 .efd__util-dot--retired {
   background: var(--ink-600);
+}
+
+/* category breakdown */
+.efd__catbreak {
+  border-radius: 12px;
+  padding: 16px;
+}
+.efd__catbreak-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 0 0 12px;
+}
+.efd__catbreak-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.efd__catbreak-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--ink-800);
+}
+.efd__catbreak-count {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+.efd__catbreak-label {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-dim);
 }
 
 /* ---- responsive ---- */
