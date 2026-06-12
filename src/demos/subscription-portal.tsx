@@ -4,9 +4,14 @@ import './subscription-portal.css';
 import { useStore } from './subscription-portal/state';
 import {
   PLANS,
+  cancelAtPeriodEnd,
   changePlan,
   changeSeats,
   findPlan,
+  pause,
+  reactivate,
+  resetAll,
+  resume,
 } from './subscription-portal/store';
 import {
   clampSeats,
@@ -212,6 +217,72 @@ function PlanManagement({ sub }: { sub: Subscription }) {
   );
 }
 
+function Lifecycle({ sub }: { sub: Subscription }) {
+  const { status } = sub;
+
+  return (
+    <section className="sp-section" aria-labelledby="sp-life-h">
+      <h4 id="sp-life-h" className="sp-section__title">
+        Lifecycle
+      </h4>
+
+      <div className="glass sp-life">
+        <div className="sp-life__state">
+          <span className="sp-life__label">Status</span>
+          <span className={`sp-status sp-status--${status}`}>
+            {statusLabel(status)}
+          </span>
+          {status === 'pending_cancel' && sub.cancelAt ? (
+            <span className="sp-life__effective">
+              Ends {formatDate(sub.cancelAt)}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="sp-life__actions" role="group" aria-label="lifecycle actions">
+          {status === 'active' ? (
+            <button
+              type="button"
+              className="demo__btn demo__btn--ghost"
+              onClick={pause}
+            >
+              Pause subscription
+            </button>
+          ) : null}
+
+          {status === 'paused' ? (
+            <button type="button" className="demo__btn" onClick={resume}>
+              Resume subscription
+            </button>
+          ) : null}
+
+          {status === 'active' ? (
+            <button
+              type="button"
+              className="demo__btn demo__btn--ghost"
+              onClick={cancelAtPeriodEnd}
+            >
+              Cancel at period end
+            </button>
+          ) : null}
+
+          {status === 'pending_cancel' ? (
+            <button type="button" className="demo__btn" onClick={reactivate}>
+              Keep subscription
+            </button>
+          ) : null}
+
+          {status === 'canceled' ? (
+            <button type="button" className="demo__btn" onClick={reactivate}>
+              Reactivate subscription
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function SubscriptionPortalDemo() {
   const { sub, invoices } = useStore();
   const plan = findPlan(sub.planId);
@@ -314,6 +385,21 @@ export default function SubscriptionPortalDemo() {
       </section>
 
       <PlanManagement sub={sub} />
+
+      <Lifecycle sub={sub} />
+
+      <div className="demo__controls">
+        <button
+          type="button"
+          className="demo__btn demo__btn--ghost"
+          onClick={resetAll}
+        >
+          Reset portal
+        </button>
+        <span className="demo__hint">
+          Clears the subscription and invoices saved in your browser.
+        </span>
+      </div>
     </div>
   );
 }
