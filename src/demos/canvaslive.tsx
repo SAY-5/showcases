@@ -68,14 +68,24 @@ export default function CanvasliveDemo() {
   // listener skips events from form fields so typing in the inspector is safe.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      const mod = e.metaKey || e.ctrlKey;
-      if (!mod || e.key.toLowerCase() !== 'z') return;
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      e.preventDefault();
-      if (e.shiftKey) redoAction();
-      else undoAction();
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) redoAction();
+        else undoAction();
+        return;
+      }
+      // Delete or Backspace removes the current selection when no field is focused.
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        const id = getSnapshot().doc.selectedId;
+        if (id) {
+          e.preventDefault();
+          deleteShape(id);
+        }
+      }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -167,6 +177,13 @@ export default function CanvasliveDemo() {
       <p className="demo__lede">
         Add shapes, then click to select, drag to move, and pull a handle to
         resize. The document is kept in your browser and restored on reload.
+      </p>
+
+      <p className="demo__hint cl__status" role="status" aria-live="polite">
+        {doc.shapes.length === 0
+          ? 'Empty canvas'
+          : `${doc.shapes.length} shape${doc.shapes.length === 1 ? '' : 's'}` +
+            (selected ? `, ${selected.kind} selected` : ', none selected')}
       </p>
 
       <div className="demo__controls cl__toolbar" role="toolbar" aria-label="Add shapes">
