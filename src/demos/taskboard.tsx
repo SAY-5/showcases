@@ -1,14 +1,22 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useReducedMotion } from 'framer-motion';
 import '../styles/demo.css';
 import './taskboard.css';
-import { COLUMN_ORDER, type ColumnId } from './taskboard/data';
+import { COLUMN_LABELS, COLUMN_ORDER, type ColumnId } from './taskboard/data';
 import { useStore } from './taskboard/state';
 import {
   addCard,
+  applyConflictStep,
   deleteCard,
   editCard,
+  FANOUT_HIGH,
+  FANOUT_LOW,
+  FANOUT_QUEUES,
   invariantsHold,
   moveCard,
+  planConflict,
+  resetBoard,
+  type LogLine,
 } from './taskboard/store';
 import { indexBefore, locate, step, type Dir } from './taskboard/dnd';
 
@@ -33,7 +41,8 @@ const ARROW_DIR: Record<string, Dir> = {
 
 export default function TaskboardDemo() {
   const state = useStore();
-  const { board } = state;
+  const reduce = useReducedMotion();
+  const { board, log, presence } = state;
   const [composer, setComposer] = useState<ColumnId | null>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [editing, setEditing] = useState<string | null>(null);
@@ -45,8 +54,45 @@ export default function TaskboardDemo() {
   // Keyboard "grab" state: the card a keyboard user is currently moving.
   const [grabbed, setGrabbed] = useState<string | null>(null);
 
+  // Conflict simulation state.
+  const [conflictId, setConflictId] = useState<string | null>(null);
+  const timers = useRef<number[]>([]);
+  useEffect(() => {
+    const handles = timers.current;
+    return () => handles.forEach((t) => window.clearTimeout(t));
+  }, []);
+
   const total = Object.keys(board.cards).length;
   const ok = invariantsHold(board);
+
+  // Replay a two-user conflict on the chosen card. Each plan step is applied to
+  // the live store on its own tick, so the board, log, and presence advance in
+  // lockstep with the on-screen timeline. The card settles into exactly one
+  // column decided by the seq tie-break.
+  function simulateConflict(cardId: string) {
+    if (conflictId) return;
+    const plan = planConflict(cardId);
+    if (!plan) return;
+    setConflictId(cardId);
+    const gap = reduce ? 0 : 620;
+    plan.steps.forEach((s, i) => {
+      const handle = window.setTimeout(
+        () => {
+          applyConflictStep(plan, s);
+          if (i === plan.steps.length - 1) setConflictId(null);
+        },
+        reduce ? 0 : i * gap + 120,
+      );
+      timers.current.push(handle);
+    });
+  }
+
+  function onReset() {
+    timers.current.forEach((t) => window.clearTimeout(t));
+    timers.current = [];
+    setConflictId(null);
+    resetBoard();
+  }
 
   function openComposer(col: ColumnId) {
     setComposer(col);
@@ -238,6 +284,15 @@ export default function TaskboardDemo() {
                           >
                             delete
                           </button>
+                          <button
+                            type="button"
+                            className="tbk__icon tbk__icon--sim"
+                            onClick={() => simulateConflict(card.id)}
+                            disabled={conflictId !== null}
+                            aria-label={`Simulate a second user moving ${card.title}`}
+                          >
+                            conflict
+                          </button>
                         </div>
                       </li>
                     );
@@ -270,6 +325,84 @@ export default function TaskboardDemo() {
               </section>
             );
           })}
+        </div>
+
+        <div className="tbk__panel">
+          <div className="tbk__presence" aria-label="Presence">
+            <span
+              className="tbk__avatar tbk__avatar--you"
+              data-on="true"
+              aria-hidden="true"
+            >
+              U
+            </span>
+            <span
+              className={`tbk__avatar tbk__avatar--mate ${presence.mate ? '' : 'tbk__avatar--off'}`}
+              data-on={presence.mate}
+              aria-hidden="true"
+            >
+              M
+            </span>
+            <span className="tbk__presence-label" aria-live="polite">
+              {presence.mate
+                ? 'You and a second user are editing'
+                : 'You are editing'}
+            </span>
+            <button
+              type="button"
+              className="tbk__btn tbk__btn--ghost tbk__reset"
+              onClick={onReset}
+            >
+              Reset and seed
+            </button>
+          </div>
+
+          <div
+            className="tbk__feed"
+            aria-label="Activity feed"
+            aria-live="polite"
+          >
+            <div className="tbk__feed-head">Activity</div>
+            <ul className="tbk__feed-list">
+              {log.length === 0 && (
+                <li className="tbk__feed-empty">
+                  No activity yet. Add a card or run a conflict.
+                </li>
+              )}
+              {[...log].reverse().map((l: LogLine) => (
+                <li
+                  key={l.id}
+                  className={`tbk__feed-line tbk__feed-line--${l.who}`}
+                >
+                  <span className="tbk__feed-who">
+                    {l.who === 'sys'
+                      ? 'sys'
+                      : l.who === 'mate'
+                        ? 'user 2'
+                        : 'you'}
+                  </span>
+                  <span className="tbk__feed-text">{l.text}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="tbk__stat">
+            <span className="tbk__stat-val">
+              {FANOUT_LOW.toLocaleString()} to {FANOUT_HIGH.toLocaleString()}
+            </span>
+            <span className="tbk__stat-unit">
+              moves per second fanned out to {FANOUT_QUEUES} subscriber queues
+            </span>
+          </div>
+
+          <p className="tbk__hint">
+            Use the conflict button on any card to replay two users moving it at
+            once: one save wins and bumps the @Version, the loser re-reads head
+            and rebases, and the higher seq is the tie-break. The card settles
+            in exactly one column. Targets are{' '}
+            {COLUMN_ORDER.map((id) => COLUMN_LABELS[id]).join(', ')}.
+          </p>
         </div>
       </div>
     </div>
