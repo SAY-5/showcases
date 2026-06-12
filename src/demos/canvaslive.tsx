@@ -3,11 +3,15 @@ import '../styles/demo.css';
 import './canvaslive.css';
 import {
   addShape,
+  deleteShape,
   getSnapshot,
   reorderBackward,
   reorderForward,
+  reorderToBack,
+  reorderToFront,
   select,
   setShapes,
+  updateShape,
 } from './canvaslive/store';
 import { useCanvasStore } from './canvaslive/state';
 import { boundingBox, hitTest, moveShape, resizeShape } from './canvaslive/engine';
@@ -134,75 +138,152 @@ export default function CanvasliveDemo() {
         </button>
       </div>
 
-      <div className="cl__stage">
-        <svg
-          ref={svgRef}
-          className="cl__canvas"
-          viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
-          role="img"
-          aria-label={`Canvas with ${doc.shapes.length} shapes`}
-          data-dragging={dragging ? 'true' : 'false'}
-          onPointerDown={onCanvasPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={endDrag}
-          onPointerCancel={endDrag}
-        >
-          {ordered.map((s) => (
-            <ShapeNode key={s.id} shape={s} selected={s.id === doc.selectedId} />
-          ))}
-
-          {selBox && selected ? (
-            <g className="cl__selection" pointerEvents="none">
-              <rect
-                className="cl__selbox"
-                x={selBox.x}
-                y={selBox.y}
-                width={selBox.w}
-                height={selBox.h}
-                fill="none"
-              />
-              {HANDLE_IDS.map((h) => {
-                const pos = handlePosition(selBox, h);
-                return (
-                  <rect
-                    key={h}
-                    className="cl__handle"
-                    x={pos.x - 5}
-                    y={pos.y - 5}
-                    width={10}
-                    height={10}
-                    pointerEvents="all"
-                    onPointerDown={(ev) => onHandlePointerDown(ev, h)}
-                  />
-                );
-              })}
-            </g>
-          ) : null}
-        </svg>
-      </div>
-
-      {selected ? (
-        <div className="cl__quickbar" aria-label="Selected shape actions">
-          <button
-            type="button"
-            className="demo__btn demo__btn--ghost"
-            onClick={() => reorderForward(selected.id)}
+      <div className="cl__layout">
+        <div className="cl__stage">
+          <svg
+            ref={svgRef}
+            className="cl__canvas"
+            viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
+            role="img"
+            aria-label={`Canvas with ${doc.shapes.length} shapes`}
+            data-dragging={dragging ? 'true' : 'false'}
+            onPointerDown={onCanvasPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
           >
-            Bring forward
-          </button>
-          <button
-            type="button"
-            className="demo__btn demo__btn--ghost"
-            onClick={() => reorderBackward(selected.id)}
-          >
-            Send back
-          </button>
+            {ordered.map((s) => (
+              <ShapeNode key={s.id} shape={s} selected={s.id === doc.selectedId} />
+            ))}
+
+            {selBox && selected ? (
+              <g className="cl__selection" pointerEvents="none">
+                <rect
+                  className="cl__selbox"
+                  x={selBox.x}
+                  y={selBox.y}
+                  width={selBox.w}
+                  height={selBox.h}
+                  fill="none"
+                />
+                {HANDLE_IDS.map((h) => {
+                  const pos = handlePosition(selBox, h);
+                  return (
+                    <rect
+                      key={h}
+                      className="cl__handle"
+                      x={pos.x - 5}
+                      y={pos.y - 5}
+                      width={10}
+                      height={10}
+                      pointerEvents="all"
+                      onPointerDown={(ev) => onHandlePointerDown(ev, h)}
+                    />
+                  );
+                })}
+              </g>
+            ) : null}
+          </svg>
         </div>
-      ) : (
-        <p className="demo__hint">Add a shape, then click it to select.</p>
-      )}
+
+        <aside className="cl__inspector glass" aria-label="Inspector">
+          {selected ? (
+            <Inspector shape={selected} />
+          ) : (
+            <p className="demo__hint cl__empty">Add a shape, then click it to edit.</p>
+          )}
+        </aside>
+      </div>
     </div>
   );
+}
+
+// Edit panel for the selected shape. Each control writes straight to the store
+// as a committed edit, so every change is independently undoable.
+function Inspector({ shape }: { shape: Shape }) {
+  return (
+    <div className="cl__inspector-body">
+      <h4 className="cl__inspector-title">
+        {shape.kind.charAt(0).toUpperCase() + shape.kind.slice(1)}
+      </h4>
+
+      {shape.kind === 'text' ? (
+        <label className="cl__field">
+          <span>Text</span>
+          <input
+            type="text"
+            value={shape.text}
+            onChange={(e) => updateShape(shape.id, { text: e.target.value })}
+          />
+        </label>
+      ) : null}
+
+      {shape.kind !== 'line' && shape.kind !== 'text' ? (
+        <label className="cl__field">
+          <span>Fill</span>
+          <input
+            type="color"
+            value={toHex(shape.fill)}
+            onChange={(e) => updateShape(shape.id, { fill: e.target.value })}
+          />
+        </label>
+      ) : null}
+
+      <label className="cl__field">
+        <span>Stroke</span>
+        <input
+          type="color"
+          value={toHex(shape.stroke)}
+          onChange={(e) => updateShape(shape.id, { stroke: e.target.value })}
+        />
+      </label>
+
+      <div className="cl__dims">
+        <label className="cl__field cl__field--num">
+          <span>Width</span>
+          <input
+            type="number"
+            value={Math.round(shape.w)}
+            onChange={(e) => updateShape(shape.id, { w: Number(e.target.value) })}
+          />
+        </label>
+        <label className="cl__field cl__field--num">
+          <span>Height</span>
+          <input
+            type="number"
+            value={Math.round(shape.h)}
+            onChange={(e) => updateShape(shape.id, { h: Number(e.target.value) })}
+          />
+        </label>
+      </div>
+
+      <div className="cl__zrow" role="group" aria-label="Layer order">
+        <button type="button" className="demo__btn demo__btn--ghost" onClick={() => reorderToFront(shape.id)}>
+          To front
+        </button>
+        <button type="button" className="demo__btn demo__btn--ghost" onClick={() => reorderForward(shape.id)}>
+          Forward
+        </button>
+        <button type="button" className="demo__btn demo__btn--ghost" onClick={() => reorderBackward(shape.id)}>
+          Backward
+        </button>
+        <button type="button" className="demo__btn demo__btn--ghost" onClick={() => reorderToBack(shape.id)}>
+          To back
+        </button>
+      </div>
+
+      <button type="button" className="demo__btn cl__delete" onClick={() => deleteShape(shape.id)}>
+        Delete shape
+      </button>
+    </div>
+  );
+}
+
+// Color inputs require a #rrggbb value. Pass hex through; map anything else
+// (named colors, rgba fills) to a readable default so the picker still opens.
+function toHex(color: string): string {
+  if (/^#[0-9a-fA-F]{6}$/.test(color)) return color;
+  return '#3df0ff';
 }
 
 // Position of one handle on the selection box edge or corner.
