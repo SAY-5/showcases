@@ -37,6 +37,13 @@ function statusClass(status: number): string {
   return 'info';
 }
 
+function statusWord(status: number): string {
+  if (status >= 200 && status < 300) return 'Success';
+  if (status >= 400 && status < 500) return 'Client error';
+  if (status >= 500) return 'Server error';
+  return 'Informational';
+}
+
 function pretty(value: unknown): string {
   try {
     return JSON.stringify(value, null, 2);
@@ -270,6 +277,7 @@ function Viewer({
         <>
           <div className="qa-status-line">
             <span className={`qa-badge ${statusClass(current.status)}`}>
+              <span className="qa-vh">{statusWord(current.status)} response, status </span>
               {current.status} {current.response.statusText}
             </span>
             <span className="qa-status-meta">
@@ -286,8 +294,15 @@ function Viewer({
             </p>
           )}
 
-          <h3 className="qa-sub">Body</h3>
-          <pre className="qa-json" tabIndex={0}>
+          <h3 className="qa-sub" id="qa-body-h">
+            Body
+          </h3>
+          <pre
+            className="qa-json"
+            tabIndex={0}
+            role="region"
+            aria-labelledby="qa-body-h"
+          >
             {pretty(current.response.body)}
           </pre>
 

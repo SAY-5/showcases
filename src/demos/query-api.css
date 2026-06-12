@@ -8,6 +8,18 @@
   font-family: var(--font-sans);
 }
 
+.qa-vh {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .qa-head {
   display: grid;
   gap: 12px;
@@ -399,6 +411,11 @@
 }
 .qa-item-main:hover {
   border-color: var(--accent-line);
+}
+.qa-item-main:focus-visible,
+.qa-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .qa-item-name {
   font-size: 13px;
