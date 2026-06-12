@@ -1,16 +1,13 @@
-/* live-events-spa: SSE live feed over a bounded ring buffer */
-.les__bar {
+/* live-events-spa: in-browser conference scheduler. Theme tokens only. */
+
+.les__tabs {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 16px;
-  padding: 11px 16px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--ink-900);
-  margin-bottom: 14px;
+  gap: 8px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
 }
-.les__conn {
+.les__tab {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -18,220 +15,200 @@
   font-size: 12px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 16px;
+  cursor: pointer;
+  transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
-.les__dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  flex: 0 0 auto;
+.les__tab:hover {
+  color: var(--text);
+  border-color: var(--accent-line);
 }
-.les__conn--up {
-  color: #4fd08a;
-}
-.les__conn--up .les__dot {
-  background: #4fd08a;
-  box-shadow: 0 0 10px rgba(79, 208, 138, 0.55);
-  animation: les-pulse 1.6s ease-in-out infinite;
-}
-.les__conn--down {
-  color: var(--accent);
-}
-.les__conn--down .les__dot {
+.les__tab--on {
+  color: var(--ink-900);
   background: var(--accent);
-  box-shadow: 0 0 10px var(--accent-glow);
+  border-color: var(--accent);
 }
-@keyframes les-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.4;
-  }
+.les__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--ink-900);
+  color: var(--accent);
+  font-size: 11px;
 }
-.les__meta {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--text-faint);
-}
-.les__meta b {
+.les__tab--on .les__badge {
+  background: var(--ink-900);
   color: var(--text-strong);
-  font-variant-numeric: tabular-nums;
 }
+
+.les__panel {
+  display: block;
+}
+
+/* filters */
 .les__filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-  margin-bottom: 14px;
+  align-items: flex-end;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  margin-bottom: 18px;
 }
-.les__search {
-  flex: 1 1 220px;
+.les__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 160px;
+  min-width: 140px;
 }
-.les__sr {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-.les__input {
-  width: 100%;
+.les__label {
   font-family: var(--mono);
-  font-size: 13px;
-  color: var(--text-strong);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.les__input,
+.les__select {
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
   background: var(--ink-900);
   border: 1px solid var(--line);
   border-radius: 10px;
-  padding: 10px 14px;
-  transition: border-color 0.18s ease;
+  padding: 9px 12px;
 }
 .les__input::placeholder {
   color: var(--text-faint);
 }
-.les__input:focus-visible {
-  outline: none;
-  border-color: var(--accent-line);
-}
-.les__types {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.les__type {
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  padding: 7px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: var(--ink-800);
-  color: var(--text-faint);
-  cursor: pointer;
-  transition:
-    border-color 0.18s ease,
-    color 0.18s ease,
-    background 0.18s ease;
-}
-.les__type:hover {
-  border-color: var(--accent-line);
-  color: var(--text-strong);
-}
-.les__type--on {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--ink-900);
-  font-weight: 600;
-}
-.les__type:focus-visible {
-  outline: 2px solid var(--accent-soft);
+.les__input:focus-visible,
+.les__select:focus-visible {
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
+  border-color: var(--accent-line);
 }
-.les__listwrap {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--ink-900);
-  overflow: hidden;
-}
-.les__list-head {
-  display: flex;
-  justify-content: space-between;
+.les__count {
   font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.06em;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* timeline grid: one column per track */
+.les__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.les__col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.les__coltitle {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--text-faint);
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--line-soft);
+  margin: 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
 }
 .les__list {
   list-style: none;
   margin: 0;
-  padding: 8px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  min-height: 120px;
-}
-.les__row {
-  display: grid;
-  grid-template-columns: 56px 1fr auto auto;
-  align-items: center;
   gap: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--line-soft);
-  border-left: 3px solid var(--line);
-  border-radius: 9px;
-  background: var(--ink-800);
 }
-.les__row--order {
-  border-left-color: #4fd08a;
+
+/* session card */
+.les__card {
+  border-radius: var(--radius);
+  border-left: 3px solid var(--accent);
+  padding: 13px 15px;
 }
-.les__row--payment {
-  border-left-color: var(--accent);
-}
-.les__row--shipment {
-  border-left-color: #5b9dff;
-}
-.les__row--refund {
-  border-left-color: #d98aff;
-}
-.les__row--resumed {
-  background:
-    radial-gradient(220px 60px at 0% 50%, var(--accent-glow), transparent 70%),
-    var(--ink-800);
-}
-.les__row-id {
+.les__time {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--accent);
-  font-variant-numeric: tabular-nums;
+  margin: 0 0 6px;
 }
-.les__row-type {
-  font-family: var(--mono);
-  font-size: 13px;
+.les__cardtitle {
+  font-size: 15px;
+  line-height: 1.35;
+  margin: 0 0 5px;
   color: var(--text-strong);
 }
-.les__row-actor {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text-faint);
+.les__cmeta {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin: 0 0 10px;
 }
-.les__row-amount {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--paper-dim);
-  font-variant-numeric: tabular-nums;
-}
-.les__empty {
+.les__tags {
   list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.les__pill {
   font-family: var(--mono);
-  font-size: 12px;
-  color: var(--text-faint);
-  padding: 24px 12px;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 9px;
+}
+.les__add {
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--accent-line);
+  border-radius: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+.les__add:hover {
+  background: var(--accent-soft);
+}
+.les__add--on {
+  background: var(--accent);
+  color: var(--ink-900);
+  border-color: var(--accent);
+}
+.les__add:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.les__empty {
+  color: var(--text-dim);
+  font-size: 14px;
+  padding: 24px 0;
   text-align: center;
 }
-.les__resume {
-  margin-top: 14px;
-  padding: 12px 16px;
-  border: 1px solid var(--accent-line);
-  border-radius: 12px;
-  background: var(--accent-glow);
-  font-family: var(--mono);
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--paper-dim);
-  max-width: 64ch;
-}
-.les__resume b {
-  color: var(--accent);
-}
-@media (max-width: 620px) {
-  .les__row {
-    grid-template-columns: 44px 1fr auto;
-  }
-  .les__row-actor {
-    display: none;
+
+@media (prefers-reduced-motion: reduce) {
+  .les__tab,
+  .les__add {
+    transition: none;
   }
 }

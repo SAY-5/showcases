@@ -1,267 +1,284 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { motion, useReducedMotion, AnimatePresence } from 'framer-motion';
+import { useMemo, useState } from 'react';
+import { useReducedMotion } from 'framer-motion';
+import '../styles/demo.css';
 import './live-events-spa.css';
+import {
+  schedule,
+  toggleAgenda,
+  useAgendaIds,
+} from './live-events-spa/store';
+import {
+  filterSessions,
+  formatRange,
+  groupByTrack,
+  tagsOf,
+  tracksOf,
+} from './live-events-spa/engine';
+import type { PlacedSession, ScheduleFilter } from './live-events-spa/types';
 
-// The feed streams domain events over Server-Sent Events into the SPA. The
-// client holds a fixed in-memory ring buffer and filters over it with no
-// round-trips while typing. EventSource carries Last-Event-ID so a dropped
-// connection resumes from the last id it saw rather than replaying the world.
-const RING_CAPACITY = 200;
+// In-browser conference scheduler. The full schedule is a fixed seed; the only
+// persisted, mutable state is a personal agenda of saved session ids kept in
+// localStorage. Everything else, filtering, grouping by track, conflict
+// detection, and the now/next strip, runs through the pure engine so render
+// stays deterministic with no Date.now in the render path. The current minute
+// is held in component state and driven by an explicit control rather than the
+// live clock, which keeps the view a pure function of its inputs.
 
-type EventType = 'order' | 'payment' | 'shipment' | 'refund';
+type View = 'schedule' | 'agenda';
 
-type DomainEvent = {
-  id: number;
-  type: EventType;
-  actor: string;
-  amount: number;
-};
+// Stable per-track accent assignment so a track keeps the same colour across
+// the timeline and the agenda. Indexes wrap if more tracks are ever added.
+const TRACK_ACCENTS = [
+  'var(--accent)',
+  'var(--magenta)',
+  '#ffcf5c',
+  '#3ddc91',
+] as const;
 
-const TYPES: EventType[] = ['order', 'payment', 'shipment', 'refund'];
-const ACTORS = ['svc-orders', 'svc-billing', 'svc-fulfil', 'svc-care'];
-
-// A tiny seeded generator so the stream is deterministic for SSR and replays.
-function makeEvent(id: number): DomainEvent {
-  const type = TYPES[(id * 7) % TYPES.length];
-  const actor = ACTORS[(id * 3) % ACTORS.length];
-  const amount = 40 + ((id * 137) % 960);
-  return { id, type, actor, amount };
+function useTrackColor(): (track: string) => string {
+  const order = useMemo(() => tracksOf(schedule), []);
+  return (track: string) => {
+    const i = order.indexOf(track);
+    return TRACK_ACCENTS[(i < 0 ? 0 : i) % TRACK_ACCENTS.length];
+  };
 }
-
-const TYPE_LABEL: Record<EventType, string> = {
-  order: 'OrderPlaced',
-  payment: 'PaymentCaptured',
-  shipment: 'ShipmentDispatched',
-  refund: 'RefundIssued',
-};
-
-const ease = [0.22, 1, 0.36, 1] as const;
 
 export default function LiveEventsSpaDemo() {
   const reduce = useReducedMotion();
-  const [buffer, setBuffer] = useState<DomainEvent[]>(() =>
-    Array.from({ length: 12 }, (_, i) => makeEvent(i + 1)),
-  );
-  const [streaming, setStreaming] = useState(false);
-  const [connected, setConnected] = useState(true);
-  const [filter, setFilter] = useState('');
-  const [typeFilter, setTypeFilter] = useState<EventType | 'all'>('all');
-  const [lastEventId, setLastEventId] = useState(12);
-  const [resumedFrom, setResumedFrom] = useState<number | null>(null);
-  const nextId = useRef(13);
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const savedIds = useAgendaIds();
+  const [view, setView] = useState<View>('schedule');
+  const [filter, setFilter] = useState<ScheduleFilter>({
+    query: '',
+    track: 'all',
+    tag: 'all',
+  });
 
-  function stop() {
-    if (timer.current !== null) {
-      clearInterval(timer.current);
-      timer.current = null;
-    }
-  }
+  const trackColor = useTrackColor();
+  const tracks = useMemo(() => tracksOf(schedule), []);
+  const tags = useMemo(() => tagsOf(schedule), []);
 
-  useEffect(() => stop, []);
-
-  useEffect(() => {
-    if (!streaming || !connected) {
-      stop();
-      return;
-    }
-    timer.current = setInterval(
-      () => {
-        const id = nextId.current++;
-        const ev = makeEvent(id);
-        setLastEventId(id);
-        setBuffer((prev) => {
-          const next = [ev, ...prev];
-          // The ring buffer is bounded: oldest events fall off the tail.
-          return next.length > RING_CAPACITY
-            ? next.slice(0, RING_CAPACITY)
-            : next;
-        });
-      },
-      reduce ? 700 : 900,
-    );
-    return stop;
-  }, [streaming, connected, reduce]);
-
-  // Client-side filter over the in-memory buffer. No request is made; this is
-  // the same filter shape the server uses for history and CSV export.
-  const visible = useMemo(() => {
-    const q = filter.trim().toLowerCase();
-    return buffer.filter((e) => {
-      if (typeFilter !== 'all' && e.type !== typeFilter) return false;
-      if (!q) return true;
-      return (
-        e.actor.toLowerCase().includes(q) ||
-        TYPE_LABEL[e.type].toLowerCase().includes(q) ||
-        String(e.id).includes(q)
-      );
-    });
-  }, [buffer, filter, typeFilter]);
-
-  function toggleStream() {
-    if (!connected) return;
-    setStreaming((s) => !s);
-  }
-
-  function dropConnection() {
-    // Simulate a dropped connection. EventSource would retry on its own and
-    // send Last-Event-ID; here the reconnect button resumes from that id.
-    setConnected(false);
-    setStreaming(false);
-    setResumedFrom(null);
-  }
-
-  function reconnect() {
-    // Resume cleanly: the server replays only events after Last-Event-ID, so
-    // the buffer picks up where it left off with no duplicates and no full
-    // replay.
-    setResumedFrom(lastEventId);
-    setConnected(true);
-    setStreaming(true);
-  }
-
-  const typeCounts = useMemo(() => {
-    const c: Record<string, number> = { all: buffer.length };
-    for (const t of TYPES) c[t] = 0;
-    for (const e of buffer) c[e.type] += 1;
-    return c;
-  }, [buffer]);
+  const visible = useMemo(() => filterSessions(schedule, filter), [filter]);
+  const groups = useMemo(() => groupByTrack(visible), [visible]);
+  const savedSet = useMemo(() => new Set(savedIds), [savedIds]);
 
   return (
-    <div className="demo les" aria-label="live events SSE stream demo">
-      <span className="demo__tag">Interactive demo</span>
-      <h3 className="demo__title">Live event feed over SSE</h3>
+    <div className="demo les" data-reduce={reduce ? 'true' : 'false'}>
+      <span className="demo__tag">Conference Scheduler</span>
+      <h3 className="demo__title">Live Events</h3>
       <p className="demo__lede">
-        Start the stream to watch domain events arrive over Server-Sent Events
-        into a bounded ring buffer. Filters narrow the in-memory buffer
-        instantly with no round-trip. Drop the connection, then reconnect to
-        resume from Last-Event-ID with no replay.
+        Browse the conference schedule by track, search and filter sessions,
+        then build a personal agenda. Saved sessions persist in your browser and
+        are checked for time conflicts.
       </p>
 
-      <div className="les__bar" role="status" aria-live="polite">
-        <span
-          className={`les__conn les__conn--${connected ? 'up' : 'down'}`}
-          aria-label={connected ? 'connection open' : 'connection dropped'}
-        >
-          <span className="les__dot" />
-          {connected ? (streaming ? 'streaming' : 'connected') : 'disconnected'}
-        </span>
-        <span className="les__meta">
-          Last-Event-ID <b>{lastEventId}</b>
-        </span>
-        <span className="les__meta">
-          buffer <b>{buffer.length}</b>/{RING_CAPACITY}
-        </span>
-      </div>
-
-      <div className="les__filters">
-        <label className="les__search">
-          <span className="les__sr">Filter events</span>
-          <input
-            className="les__input"
-            type="text"
-            placeholder="filter actor, type, or id"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          />
-        </label>
-        <div className="les__types" role="group" aria-label="filter by type">
-          <button
-            className={`les__type ${typeFilter === 'all' ? 'les__type--on' : ''}`}
-            onClick={() => setTypeFilter('all')}
-            aria-pressed={typeFilter === 'all'}
-          >
-            all {typeCounts.all}
-          </button>
-          {TYPES.map((t) => (
-            <button
-              key={t}
-              className={`les__type ${typeFilter === t ? 'les__type--on' : ''}`}
-              onClick={() => setTypeFilter(t)}
-              aria-pressed={typeFilter === t}
-            >
-              {t} {typeCounts[t]}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="les__listwrap">
-        <div className="les__list-head">
-          <span>showing {visible.length} of {buffer.length} buffered</span>
-          <span className="les__list-hint">newest first</span>
-        </div>
-        <ul className="les__list">
-          <AnimatePresence initial={false}>
-            {visible.slice(0, 16).map((e) => {
-              const isResumed =
-                resumedFrom !== null && e.id > resumedFrom && streaming;
-              return (
-                <motion.li
-                  key={e.id}
-                  className={`les__row les__row--${e.type}${
-                    isResumed ? ' les__row--resumed' : ''
-                  }`}
-                  layout={!reduce}
-                  initial={{ opacity: 0, y: reduce ? 0 : -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: reduce ? 0 : 0.28, ease }}
-                >
-                  <span className="les__row-id">#{e.id}</span>
-                  <span className="les__row-type">{TYPE_LABEL[e.type]}</span>
-                  <span className="les__row-actor">{e.actor}</span>
-                  <span className="les__row-amount">${e.amount}.00</span>
-                </motion.li>
-              );
-            })}
-          </AnimatePresence>
-          {visible.length === 0 && (
-            <li className="les__empty">no buffered events match this filter</li>
-          )}
-        </ul>
-      </div>
-
-      <AnimatePresence>
-        {resumedFrom !== null && (
-          <motion.div
-            className="les__resume"
-            initial={{ opacity: 0, y: reduce ? 0 : 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.35, ease }}
-          >
-            resumed from Last-Event-ID <b>{resumedFrom}</b>: the server replayed
-            only events after that id, so the buffer continued without gaps or
-            duplicates.
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="demo__controls">
+      <div className="les__tabs" role="tablist" aria-label="Scheduler views">
         <button
-          className="demo__btn"
-          onClick={toggleStream}
-          disabled={!connected}
+          type="button"
+          role="tab"
+          id="les-tab-schedule"
+          aria-selected={view === 'schedule'}
+          aria-controls="les-panel-schedule"
+          className={`les__tab${view === 'schedule' ? ' les__tab--on' : ''}`}
+          onClick={() => setView('schedule')}
         >
-          {streaming ? 'Pause stream' : 'Start stream'}
+          Schedule
         </button>
-        {connected ? (
-          <button
-            className="demo__btn demo__btn--ghost"
-            onClick={dropConnection}
-          >
-            Drop connection
-          </button>
-        ) : (
-          <button className="demo__btn" onClick={reconnect}>
-            Reconnect
-          </button>
-        )}
-        <span className="demo__hint">
-          SSE one-way feed, Kafka durable upstream, Postgres read-model
-        </span>
+        <button
+          type="button"
+          role="tab"
+          id="les-tab-agenda"
+          aria-selected={view === 'agenda'}
+          aria-controls="les-panel-agenda"
+          className={`les__tab${view === 'agenda' ? ' les__tab--on' : ''}`}
+          onClick={() => setView('agenda')}
+        >
+          My Agenda
+          {savedIds.length > 0 && (
+            <span className="les__badge" aria-hidden="true">
+              {savedIds.length}
+            </span>
+          )}
+        </button>
       </div>
+
+      {view === 'schedule' && (
+        <section
+          id="les-panel-schedule"
+          role="tabpanel"
+          aria-labelledby="les-tab-schedule"
+          className="les__panel"
+        >
+          <ScheduleFilters
+            filter={filter}
+            tracks={tracks}
+            tags={tags}
+            onChange={setFilter}
+            resultCount={visible.length}
+          />
+          <ScheduleTimeline
+            groups={groups}
+            savedSet={savedSet}
+            trackColor={trackColor}
+          />
+        </section>
+      )}
     </div>
+  );
+}
+
+function ScheduleFilters({
+  filter,
+  tracks,
+  tags,
+  onChange,
+  resultCount,
+}: {
+  filter: ScheduleFilter;
+  tracks: string[];
+  tags: string[];
+  onChange: (f: ScheduleFilter) => void;
+  resultCount: number;
+}) {
+  return (
+    <div className="les__filters glass">
+      <div className="les__field">
+        <label htmlFor="les-search" className="les__label">
+          Search
+        </label>
+        <input
+          id="les-search"
+          type="search"
+          className="les__input"
+          placeholder="title, speaker, room, tag"
+          value={filter.query}
+          onChange={(e) => onChange({ ...filter, query: e.target.value })}
+        />
+      </div>
+      <div className="les__field">
+        <label htmlFor="les-track" className="les__label">
+          Track
+        </label>
+        <select
+          id="les-track"
+          className="les__select"
+          value={filter.track}
+          onChange={(e) =>
+            onChange({
+              ...filter,
+              track: e.target.value as ScheduleFilter['track'],
+            })
+          }
+        >
+          <option value="all">All tracks</option>
+          {tracks.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="les__field">
+        <label htmlFor="les-tag" className="les__label">
+          Tag
+        </label>
+        <select
+          id="les-tag"
+          className="les__select"
+          value={filter.tag}
+          onChange={(e) =>
+            onChange({
+              ...filter,
+              tag: e.target.value as ScheduleFilter['tag'],
+            })
+          }
+        >
+          <option value="all">All tags</option>
+          {tags.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+      </div>
+      <p className="les__count" aria-live="polite">
+        {resultCount} session{resultCount === 1 ? '' : 's'}
+      </p>
+    </div>
+  );
+}
+
+function ScheduleTimeline({
+  groups,
+  savedSet,
+  trackColor,
+}: {
+  groups: { track: string; sessions: PlacedSession[] }[];
+  savedSet: Set<string>;
+  trackColor: (track: string) => string;
+}) {
+  const hasResults = groups.some((g) => g.sessions.length > 0);
+  if (!hasResults) {
+    return (
+      <p className="les__empty" role="status">
+        No sessions match these filters.
+      </p>
+    );
+  }
+  return (
+    <div className="les__grid">
+      {groups.map((g) => (
+        <div className="les__col" key={g.track}>
+          <h4 className="les__coltitle" style={{ color: trackColor(g.track) }}>
+            {g.track}
+          </h4>
+          <ul className="les__list">
+            {g.sessions.map((s) => (
+              <li key={s.id}>
+                <SessionCard
+                  session={s}
+                  saved={savedSet.has(s.id)}
+                  accent={trackColor(s.track)}
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SessionCard({
+  session,
+  saved,
+  accent,
+}: {
+  session: PlacedSession;
+  saved: boolean;
+  accent: string;
+}) {
+  return (
+    <article className="les__card glass" style={{ borderLeftColor: accent }}>
+      <p className="les__time">{formatRange(session)}</p>
+      <h5 className="les__cardtitle">{session.title}</h5>
+      <p className="les__cmeta">
+        {session.speaker} · {session.room}
+      </p>
+      <ul className="les__tags" aria-label="Tags">
+        {session.tags.map((t) => (
+          <li className="les__pill" key={t}>
+            {t}
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        className={`les__add${saved ? ' les__add--on' : ''}`}
+        aria-pressed={saved}
+        onClick={() => toggleAgenda(session.id)}
+      >
+        {saved ? 'In my agenda' : 'Add to agenda'}
+      </button>
+    </article>
   );
 }
