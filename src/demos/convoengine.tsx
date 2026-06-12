@@ -212,7 +212,7 @@ function ValidationPanel({ nodes }: { nodes: FlowNode[] }) {
   return (
     <section className="ceb__validation" aria-label="Validation issues">
       <div className="ceb__val-head">
-        <span className="ceb__val-title">Validation</span>
+        <h4 className="ceb__val-title">Validation</h4>
         <span
           className="ceb__val-status"
           data-ok={report.ok}
@@ -325,7 +325,7 @@ function Runner({ flow }: { flow: Flow }) {
   return (
     <section className="ceb__runner glass" aria-label="Play the flow">
       <div className="ceb__runner-head">
-        <span className="ceb__val-title">Play through</span>
+        <h4 className="ceb__val-title ceb__runner-title">Play through</h4>
         <button type="button" className="demo__btn demo__btn--ghost" onClick={restart}>
           Restart
         </button>
@@ -496,21 +496,26 @@ export default function ConvoengineDemo() {
 
       <Runner key={flow.start ?? 'no-start'} flow={flow} />
 
-      <ol className="ceb__nodes">
-        {flow.nodes.length === 0 && (
-          <li className="ceb__empty">
-            No nodes yet. Add a message, choice, or end node to begin.
-          </li>
-        )}
-        {flow.nodes.map((node) => (
-          <NodeCard
-            key={node.id}
-            node={node}
-            nodes={flow.nodes}
-            isStart={node.id === flow.start}
-          />
-        ))}
-      </ol>
+      <section aria-label="Flow nodes">
+        <h4 className="ceb__section-title">
+          Nodes <span className="demo__hint">{flow.nodes.length} total</span>
+        </h4>
+        <ol className="ceb__nodes">
+          {flow.nodes.length === 0 && (
+            <li className="ceb__empty">
+              No nodes yet. Add a message, choice, or end node to begin.
+            </li>
+          )}
+          {flow.nodes.map((node) => (
+            <NodeCard
+              key={node.id}
+              node={node}
+              nodes={flow.nodes}
+              isStart={node.id === flow.start}
+            />
+          ))}
+        </ol>
+      </section>
     </div>
   );
 }
