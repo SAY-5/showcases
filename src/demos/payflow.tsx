@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import '../styles/demo.css';
 import './payflow.css';
-import { act, createPayment, eventsFor, useStore } from './payflow/store';
+import { act, createPayment, eventsFor, resetAll, useStore } from './payflow/store';
+import { reconcile, type CurrencyTotals } from './payflow/reconcile';
 import { legalActions } from './payflow/engine';
 import { formatMoney, parseMajor } from './payflow/money';
 import {
@@ -264,6 +265,74 @@ function Detail({ intent }: { intent: PaymentIntent }) {
   );
 }
 
+function ReconcileRow({ row }: { row: CurrencyTotals }) {
+  return (
+    <tr>
+      <th scope="row" className="mono">
+        {row.currency}
+      </th>
+      <td className="mono">{formatMoney(row.authorized, row.currency)}</td>
+      <td className="mono">{formatMoney(row.captured, row.currency)}</td>
+      <td className="mono">{formatMoney(row.refunded, row.currency)}</td>
+      <td className="mono pf-recon__net">{formatMoney(row.net, row.currency)}</td>
+    </tr>
+  );
+}
+
+function Reconciliation({ intents }: { intents: PaymentIntent[] }) {
+  const r = reconcile(intents);
+  return (
+    <section className="pf-recon glass" aria-label="Reconciliation">
+      <div className="pf-recon__head">
+        <h3 className="pf-recon__title">Reconciliation</h3>
+        <button
+          className="demo__btn demo__btn--ghost"
+          onClick={() => resetAll()}
+          aria-label="Clear all payments and the event log"
+        >
+          Reset all
+        </button>
+      </div>
+
+      {r.byCurrency.length === 0 ? (
+        <p className="pf-recon__empty">Nothing to reconcile yet.</p>
+      ) : (
+        <table className="pf-recon__table">
+          <thead>
+            <tr>
+              <th scope="col">Currency</th>
+              <th scope="col">Authorized</th>
+              <th scope="col">Captured</th>
+              <th scope="col">Refunded</th>
+              <th scope="col">Net</th>
+            </tr>
+          </thead>
+          <tbody>
+            {r.byCurrency.map((row) => (
+              <ReconcileRow key={row.currency} row={row} />
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      <dl className="pf-recon__counts">
+        <div>
+          <dt>Intents</dt>
+          <dd className="mono">{r.intentCount}</dd>
+        </div>
+        <div>
+          <dt>Declined</dt>
+          <dd className="mono">{r.declined}</dd>
+        </div>
+        <div>
+          <dt>Retried</dt>
+          <dd className="mono">{r.retried}</dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
+
 export default function PayflowDemo() {
   const { intents } = useStore();
   const [selected, setSelected] = useState<string | null>(null);
@@ -330,6 +399,8 @@ export default function PayflowDemo() {
           <p className="pf-detail__placeholder">Select an intent to act on it.</p>
         )}
       </div>
+
+      <Reconciliation intents={intents} />
     </div>
   );
 }
