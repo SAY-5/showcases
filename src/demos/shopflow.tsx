@@ -10,8 +10,12 @@ import {
   clearCart,
   placeOrder,
   removeFromCart,
+  resetAll,
+  resetBreaker,
+  setDownstreamHealthy,
   setInjectFailSku,
   setQty,
+  TRIP_THRESHOLD,
   type Order,
   type SagaEvent,
 } from './shopflow/store';
@@ -26,11 +30,12 @@ import {
 // of hanging. Local benchmark over 2000 placements: p50 2.925ms, p95 3.774ms.
 const P50_MS = 2.925;
 const P95_MS = 3.774;
+const PER_SEC = 329;
 const STEP_MS = 520;
 const ease = [0.22, 1, 0.36, 1] as const;
 
-type View = 'shop' | 'checkout' | 'orders';
-type Run = 'idle' | 'running' | 'committed' | 'rolledback';
+type View = 'shop' | 'checkout' | 'orders' | 'gateway';
+type Run = 'idle' | 'running' | 'committed' | 'rolledback' | 'fallback';
 
 export default function ShopflowDemo() {
   const state = useStore();
@@ -76,9 +81,17 @@ export default function ShopflowDemo() {
     setReserved([]);
     setFailedSku(null);
     setConfirmed(null);
-    setRun('running');
 
     const result = placeOrder();
+
+    // Breaker already open: the gateway answers from the fallback without
+    // attempting the downstream reservation path, so there is nothing to replay.
+    if (result.breakerOpen && result.events.length === 0 && !result.ok) {
+      setRun('fallback');
+      return;
+    }
+
+    setRun('running');
     const stack: string[] = [];
     let step = 0;
 
@@ -90,7 +103,9 @@ export default function ShopflowDemo() {
 
     // settle the run state after the last event has played
     at(step * STEP_MS, () => {
-      setRun(result.ok ? 'committed' : 'rolledback');
+      if (result.ok) setRun('committed');
+      else if (result.breakerOpen) setRun('fallback');
+      else setRun('rolledback');
     });
   }
 
@@ -157,6 +172,14 @@ export default function ShopflowDemo() {
             onClick={() => setView('orders')}
           >
             Orders{state.orders.length > 0 ? ` (${state.orders.length})` : ''}
+          </button>
+          <button
+            role="tab"
+            aria-selected={view === 'gateway'}
+            className={`sf__tab ${view === 'gateway' ? 'sf__tab--on' : ''}`}
+            onClick={() => setView('gateway')}
+          >
+            Gateway
           </button>
         </div>
         <span className="sfa__bar-spacer" />
@@ -434,6 +457,20 @@ export default function ShopflowDemo() {
                 )}
               </AnimatePresence>
 
+              {run === 'fallback' && (
+                <div className="sfa__fallback">
+                  <span className="sfa__fallback-head">
+                    Gateway served the fallback
+                  </span>
+                  <span className="sfa__fallback-text">
+                    The breaker is OPEN, so the gateway answered from its 503
+                    fallback without calling the downstream service or hanging.
+                    Close the breaker from the Gateway tab, then place the order
+                    again. Your cart is untouched.
+                  </span>
+                </div>
+              )}
+
               <div className="sfa__cart-actions">
                 <button
                   className="demo__btn"
@@ -476,6 +513,94 @@ export default function ShopflowDemo() {
             </ul>
           )}
         </section>
+      )}
+
+      {view === 'gateway' && (
+        <div className="sfa__checkout">
+          <div className="sfa__panel">
+            <div className="sfa__panel-head">Gateway circuit breaker</div>
+
+            <div className="sfa__gw-row">
+              <div className="sfa__node">
+                <span className="sfa__node-name">gateway</span>
+                <span className="sfa__node-sub">Resilience4j</span>
+              </div>
+              <div className={`sfa__breaker sfa__breaker--${state.breaker}`}>
+                <span className="sfa__breaker-state">{state.breaker}</span>
+                <span className="sfa__breaker-meta">
+                  {state.breaker === 'open'
+                    ? '503 fallback, no downstream call'
+                    : `${state.consecutiveFails}/${TRIP_THRESHOLD} consecutive fails`}
+                </span>
+              </div>
+              <button
+                className={`sfa__node sfa__node--svc ${
+                  state.downstreamHealthy ? 'sfa__node--up' : 'sfa__node--down'
+                }`}
+                onClick={() => setDownstreamHealthy(!state.downstreamHealthy)}
+                aria-pressed={!state.downstreamHealthy}
+                aria-label={`Catalog service is currently ${
+                  state.downstreamHealthy ? 'healthy' : 'failing'
+                }. Toggle health.`}
+              >
+                <span className="sfa__node-name">catalog svc</span>
+                <span className="sfa__node-sub">
+                  {state.downstreamHealthy ? 'healthy' : 'failing'}
+                </span>
+              </button>
+            </div>
+
+            <p className="sfa__verdict-text">
+              When the catalog service is failing, each placement attempt counts
+              against the breaker. After {TRIP_THRESHOLD} consecutive failures
+              the breaker trips from closed to open, and further checkouts get
+              the 503 fallback at once instead of hanging on the downstream.
+            </p>
+
+            <div className="sfa__stats">
+              <div className="sfa__stat">
+                <span className="sfa__stat-val">{P50_MS}</span>
+                <span className="sfa__stat-unit">ms p50</span>
+              </div>
+              <div className="sfa__stat">
+                <span className="sfa__stat-val">{P95_MS}</span>
+                <span className="sfa__stat-unit">ms p95</span>
+              </div>
+              <div className="sfa__stat">
+                <span className="sfa__stat-val">{PER_SEC}</span>
+                <span className="sfa__stat-unit">placements/sec</span>
+              </div>
+            </div>
+
+            <div className="sfa__cart-actions">
+              <button
+                className="demo__btn"
+                disabled={cart.lines.length === 0}
+                onClick={goCheckout}
+              >
+                Try a checkout
+              </button>
+              <button
+                className="demo__btn demo__btn--ghost"
+                onClick={resetBreaker}
+              >
+                Close breaker
+              </button>
+              <button
+                className="demo__btn demo__btn--ghost"
+                onClick={() => {
+                  resetAll();
+                  setView('shop');
+                }}
+              >
+                Reset all
+              </button>
+            </div>
+            <p className="sfa__cart-empty" style={{ marginTop: 4 }}>
+              Reset all clears the saved cart and orders from this browser.
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );
