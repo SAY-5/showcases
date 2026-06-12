@@ -7,14 +7,21 @@ import {
   schema,
   type Action,
   type Condition,
+  type Decision,
   type FieldDef,
   type FieldValue,
+  type Input,
   type Operator,
   type Rule,
 } from './clientflow/types';
-import { describeAction, describeCondition } from './clientflow/engine';
+import { describeAction, describeCondition, evaluate } from './clientflow/engine';
 import { useStore } from './clientflow/state';
-import { addRule, deleteRule, toggleRule } from './clientflow/store';
+import {
+  activeVersion,
+  addRule,
+  deleteRule,
+  toggleRule,
+} from './clientflow/store';
 
 // In-browser no-code rules engine. The schema, condition tree, actions, and the
 // safe interpreter all run client-side; the rule set persists in localStorage.
@@ -53,7 +60,7 @@ export default function ClientflowDemo() {
       </div>
 
       {view === 'build' && <Builder rules={state.draft} />}
-      {view === 'run' && <RunPlaceholder />}
+      {view === 'run' && <RunPanel />}
       {view === 'versions' && <VersionsPlaceholder />}
     </div>
   );
@@ -336,8 +343,209 @@ function RuleRow({ rule }: { rule: Rule }) {
   );
 }
 
-function RunPlaceholder() {
-  return <p className="cf__empty">Test runner is in the next step.</p>;
+// Build a starting sample input from the schema defaults, so the runner always
+// has a complete, well typed input to evaluate.
+function defaultInput(): Input {
+  const input: Input = {};
+  for (const f of schema) {
+    if (f.type === 'number') input[f.name] = 0;
+    else if (f.type === 'boolean') input[f.name] = false;
+    else input[f.name] = f.options ? f.options[0] : '';
+  }
+  return input;
+}
+
+function RunPanel() {
+  const state = useStore();
+  const [input, setInput] = useState<Input>(defaultInput);
+
+  // Evaluate against the active retained version if one exists, otherwise the
+  // working draft, so the runner is useful before the first publish.
+  const active = activeVersion(state);
+  const rules = active ? active.rules : state.draft;
+  const sourceLabel = active ? `v${active.id} active` : 'draft (unpublished)';
+
+  const decision: Decision = useMemo(
+    () => evaluate(rules, input),
+    [rules, input],
+  );
+  const firedSet = new Set(decision.fired);
+
+  function setField(name: string, value: FieldValue) {
+    setInput((prev) => ({ ...prev, [name]: value }));
+  }
+
+  return (
+    <div className="cf__stage">
+      <div className="cf__run">
+        <div className="cf__run-grid">
+          <div className="cf__panel">
+            <div className="cf__panel-head">
+              Sample input
+              <span className="cf__source">{sourceLabel}</span>
+            </div>
+            {schema.map((f) => (
+              <div className="cf__field" key={f.name}>
+                <span className="cf__field-key">{f.name}</span>
+                <InputField def={f} value={input[f.name]} onChange={setField} />
+              </div>
+            ))}
+            <button
+              type="button"
+              className="demo__btn demo__btn--ghost cf__reset-input"
+              onClick={() => setInput(defaultInput())}
+            >
+              Reset input
+            </button>
+          </div>
+
+          <div className="cf__panel">
+            <div className="cf__panel-head">
+              Fired rules
+              <span className="cf__count">{decision.fired.length}</span>
+            </div>
+            {rules.length === 0 && (
+              <p className="cf__empty">No rules to evaluate.</p>
+            )}
+            {rules.map((rule) => {
+              const fired = firedSet.has(rule.id);
+              const skipped = !rule.enabled;
+              return (
+                <div
+                  key={rule.id}
+                  className="cf__fire"
+                  data-fired={String(fired)}
+                  data-skipped={String(skipped)}
+                >
+                  <span className="cf__fire-dot" />
+                  <span className="cf__fire-name">{rule.name}</span>
+                  <span className="cf__fire-state">
+                    {skipped ? 'disabled' : fired ? 'fired' : 'no match'}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <DecisionView decision={decision} />
+      </div>
+    </div>
+  );
+}
+
+function InputField({
+  def,
+  value,
+  onChange,
+}: {
+  def: FieldDef;
+  value: FieldValue;
+  onChange: (name: string, value: FieldValue) => void;
+}) {
+  if (def.type === 'boolean') {
+    const on = value === true;
+    return (
+      <button
+        type="button"
+        className="cf__field-toggle"
+        data-on={String(on)}
+        aria-pressed={on}
+        aria-label={`${def.name} flag`}
+        onClick={() => onChange(def.name, !on)}
+      >
+        {on ? 'true' : 'false'}
+      </button>
+    );
+  }
+  if (def.type === 'string' && def.options) {
+    return (
+      <select
+        className="cf__select"
+        value={String(value)}
+        aria-label={def.name}
+        onChange={(e) => onChange(def.name, e.target.value)}
+      >
+        {def.options.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+      </select>
+    );
+  }
+  if (def.type === 'number') {
+    return (
+      <input
+        className="cf__field-input"
+        type="number"
+        value={Number(value)}
+        aria-label={def.name}
+        onChange={(e) => onChange(def.name, Number(e.target.value) || 0)}
+      />
+    );
+  }
+  return (
+    <input
+      className="cf__field-input"
+      type="text"
+      value={String(value)}
+      aria-label={def.name}
+      onChange={(e) => onChange(def.name, e.target.value)}
+    />
+  );
+}
+
+function DecisionView({ decision }: { decision: Decision }) {
+  const outputs = Object.entries(decision.outputs);
+  const empty =
+    outputs.length === 0 &&
+    decision.flags.length === 0 &&
+    decision.routes.length === 0;
+  return (
+    <div className="cf__decision" aria-label="decision">
+      <div className="cf__panel-head">Decision</div>
+      {empty && (
+        <p className="cf__empty">No actions fired for this input.</p>
+      )}
+      {outputs.length > 0 && (
+        <div className="cf__dec-group">
+          <span className="cf__dec-label">outputs</span>
+          <div className="cf__dec-tags">
+            {outputs.map(([k, v]) => (
+              <span key={k} className="cf__tag cf__tag--set">
+                {k} = {typeof v === 'string' ? `"${v}"` : String(v)}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {decision.flags.length > 0 && (
+        <div className="cf__dec-group">
+          <span className="cf__dec-label">flags</span>
+          <div className="cf__dec-tags">
+            {decision.flags.map((f) => (
+              <span key={f} className="cf__tag cf__tag--flag">
+                {f}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {decision.routes.length > 0 && (
+        <div className="cf__dec-group">
+          <span className="cf__dec-label">routes</span>
+          <div className="cf__dec-tags">
+            {decision.routes.map((r) => (
+              <span key={r} className="cf__tag cf__tag--route">
+                {r}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function VersionsPlaceholder() {
