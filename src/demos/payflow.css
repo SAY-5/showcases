@@ -136,3 +136,232 @@
   color: var(--magenta);
   border-color: rgba(255, 43, 208, 0.5);
 }
+
+/* layout: list beside detail */
+.pf-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 18px;
+  align-items: start;
+}
+.pf-row {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  border: 1px solid var(--glass-border);
+  transition:
+    transform 0.14s ease,
+    border-color 0.14s ease;
+}
+.pf-row:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent-line);
+}
+.pf-row--active {
+  border-color: var(--accent-line);
+  box-shadow: 0 0 0 1px var(--accent-line) inset;
+}
+
+/* detail panel */
+.pf-detail {
+  border-radius: var(--radius);
+  padding: 18px;
+}
+.pf-detail__placeholder {
+  color: var(--text-dim);
+  font-size: 14px;
+  align-self: center;
+  padding: 18px;
+}
+.pf-detail__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.pf-detail__id {
+  font-size: 14px;
+  color: var(--accent);
+}
+.pf-detail__amounts {
+  display: flex;
+  gap: 18px;
+  margin: 0 0 16px;
+}
+.pf-detail__amounts dt {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.pf-detail__amounts dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+  color: var(--text-strong);
+}
+
+/* state diagram */
+.pf-diagram {
+  margin: 6px 0 16px;
+}
+.pf-diagram__track {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pf-node {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.pf-node__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--line);
+}
+.pf-node--reached {
+  color: var(--text);
+  border-color: var(--accent-line);
+}
+.pf-node--reached .pf-node__dot {
+  background: var(--accent);
+}
+.pf-node--current {
+  color: var(--ink-900);
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+.pf-node--current .pf-node__dot {
+  background: var(--ink-900);
+}
+.pf-diagram__side {
+  margin: 10px 0 0;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.pf-diagram__side--voided {
+  color: var(--text-faint);
+}
+.pf-diagram__side--failed {
+  color: var(--magenta);
+}
+
+/* decline toggle */
+.pf-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 14px;
+  cursor: pointer;
+}
+.pf-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--magenta);
+}
+
+/* action buttons */
+.pf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.pf-actions__group {
+  display: inline-flex;
+  gap: 6px;
+}
+.pf-actions__none {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.pf-detail__note {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--magenta);
+}
+.pf-detail__retries {
+  margin: 12px 0 16px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.pf-detail__sub {
+  font-size: 13px;
+  margin: 0 0 10px;
+  color: var(--text-strong);
+}
+
+/* event timeline */
+.pf-timeline,
+.pf-timeline__empty {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.pf-timeline__empty {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.pf-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pf-event {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 13px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.pf-event__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+.pf-event--ok .pf-event__dot {
+  background: var(--ok);
+}
+.pf-event--err .pf-event__dot {
+  background: var(--magenta);
+}
+.pf-event--replay .pf-event__dot {
+  background: var(--warn);
+}
+.pf-event__action {
+  font-size: 12px;
+  color: var(--accent);
+  min-width: 96px;
+}
+.pf-event__amount {
+  font-size: 12px;
+  color: var(--text-strong);
+}
+.pf-event__reason {
+  color: var(--text-dim);
+  margin-left: auto;
+  font-size: 12px;
+}
+
+@media (max-width: 760px) {
+  .pf-layout {
+    grid-template-columns: 1fr;
+  }
+}

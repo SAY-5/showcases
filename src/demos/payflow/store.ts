@@ -55,6 +55,12 @@ function writeJSON(key: string, value: unknown): void {
   }
 }
 
+// The store owns the wall clock so components never read it during render. The
+// engine itself stays pure and receives this value as a plain argument.
+function clock(): number {
+  return Date.now();
+}
+
 function loadState(): State {
   return {
     intents: readJSON<PaymentIntent[]>(INTENTS_KEY, []),
@@ -108,7 +114,7 @@ export function eventsFor(id: string): IntentEvent[] {
 export function createPayment(
   amount: number,
   currency: Currency,
-  now: number,
+  now: number = clock(),
 ): PaymentIntent | null {
   if (!Number.isInteger(amount) || amount <= 0) return null;
   const intent = createIntent(amount, currency, now);
@@ -131,7 +137,7 @@ export function createPayment(
 // ---------- act ----------
 
 export type ActOptions = {
-  now: number;
+  now?: number;
   amount?: number;
   processorMode?: ProcessorMode;
   maxRetries?: number;
@@ -150,6 +156,7 @@ export function act(
   const intent = getIntent(intentId);
   if (!intent) return null;
 
+  const now = opts.now ?? clock();
   const key = opts.idempotencyKey;
   if (key) {
     const prior = state.idemp[key];
@@ -159,12 +166,12 @@ export function act(
         ...(original ?? {
           id: `EV-replay-${key}`,
           intentId,
-          at: opts.now,
+          at: now,
           action,
           ok: prior.ok,
         }),
         id: `EV-replay-${key}-${state.events.length}`,
-        at: opts.now,
+        at: now,
         replayed: true,
       };
       commit({ ...state, events: [...state.events, replay] });
@@ -173,7 +180,7 @@ export function act(
   }
 
   const applyOpts: ApplyOptions = {
-    now: opts.now,
+    now,
     amount: opts.amount,
     processorMode: opts.processorMode,
     maxRetries: opts.maxRetries,
