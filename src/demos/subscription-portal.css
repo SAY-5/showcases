@@ -1,5 +1,15 @@
 /* subscription-portal: customer self-service portal */
 
+/* Visible focus ring on every interactive control, matching the theme accent.
+   The global :focus-visible covers most cases; these tighten the offset on the
+   rounded controls so the ring traces the shape. */
+.sp-plan:focus-visible,
+.sp-stepper__btn:focus-visible,
+.sp-confirm:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .sp-section {
   margin-top: 26px;
 }
@@ -449,5 +459,16 @@
   .sp-life {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+/* Honor reduced-motion: drop hover lifts and transitions. */
+@media (prefers-reduced-motion: reduce) {
+  .sp-plan,
+  .sp-stepper__btn {
+    transition: none;
+  }
+  .sp-plan:hover:not(:disabled) {
+    transform: none;
   }
 }
