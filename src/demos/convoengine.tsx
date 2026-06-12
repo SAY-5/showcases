@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import '../styles/demo.css';
 import './convoengine.css';
-import type { ChoiceNode, FlowNode, MessageNode } from './convoengine/types';
-import { validate } from './convoengine/engine';
+import type { ChoiceNode, Flow, FlowNode, MessageNode } from './convoengine/types';
+import { advance, getNode, validate } from './convoengine/engine';
 import {
   addNode,
   addOption,
@@ -275,6 +275,152 @@ function ValidationPanel({ nodes }: { nodes: FlowNode[] }) {
   );
 }
 
+// One entry in the path the player has walked: the node visited and, for a
+// choice, the option label they picked to leave it.
+interface PathEntry {
+  nodeId: string;
+  label: string;
+  text: string;
+  choice: string | null;
+}
+
+// The play view. It walks the flow from the start node using the same pure
+// engine the validator uses: message nodes advance on Continue, choice nodes
+// advance on the selected option, and the walk ends at an end node or a null
+// target. The path taken is shown so the player can see the branch they made.
+function Runner({ flow }: { flow: Flow }) {
+  const [currentId, setCurrentId] = useState<string | null>(flow.start);
+  const [path, setPath] = useState<PathEntry[]>([]);
+  const [done, setDone] = useState(false);
+
+  const current = getNode(flow, currentId);
+
+  function restart() {
+    setCurrentId(flow.start);
+    setPath([]);
+    setDone(false);
+  }
+
+  function step(node: FlowNode, optionId: string | null, choiceLabel: string | null) {
+    const entry: PathEntry = {
+      nodeId: node.id,
+      label: node.label,
+      text: node.text,
+      choice: choiceLabel,
+    };
+    const nextId = advance(node, optionId);
+    setPath((p) => [...p, entry]);
+    if (nextId === null || getNode(flow, nextId) === undefined) {
+      setCurrentId(null);
+      setDone(true);
+      return;
+    }
+    // Land on the next node. If it is an end node its closing text shows and
+    // the Finish button completes the walk.
+    setCurrentId(nextId);
+  }
+
+  const noStart = flow.start === null || getNode(flow, flow.start) === undefined;
+
+  return (
+    <section className="ceb__runner glass" aria-label="Play the flow">
+      <div className="ceb__runner-head">
+        <span className="ceb__val-title">Play through</span>
+        <button type="button" className="demo__btn demo__btn--ghost" onClick={restart}>
+          Restart
+        </button>
+      </div>
+
+      {noStart ? (
+        <p className="ceb__runner-empty">
+          Set a start node above to play the flow.
+        </p>
+      ) : (
+        <>
+          {current && (
+            <div className="ceb__bubble" data-kind={current.kind}>
+              <span className="ceb__bubble-kind">{current.kind}</span>
+              <p className="ceb__bubble-text">
+                {current.text || <em className="ceb__muted">No text yet.</em>}
+              </p>
+
+              {current.kind === 'message' && (
+                <button
+                  type="button"
+                  className="demo__btn"
+                  onClick={() => step(current, null, null)}
+                >
+                  Continue
+                </button>
+              )}
+
+              {current.kind === 'choice' && (
+                <div className="ceb__choices" role="group" aria-label="Choices">
+                  {current.options.length === 0 && (
+                    <span className="ceb__muted">This choice has no options.</span>
+                  )}
+                  {current.options.map((opt) => (
+                    <button
+                      type="button"
+                      key={opt.id}
+                      className="demo__btn"
+                      onClick={() => step(current, opt.id, opt.label)}
+                    >
+                      {opt.label || 'Untitled option'}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {current.kind === 'end' && (
+                <button
+                  type="button"
+                  className="demo__btn demo__btn--ghost"
+                  onClick={() => {
+                    setPath((p) => [
+                      ...p,
+                      {
+                        nodeId: current.id,
+                        label: current.label,
+                        text: current.text,
+                        choice: null,
+                      },
+                    ]);
+                    setCurrentId(null);
+                    setDone(true);
+                  }}
+                >
+                  Finish
+                </button>
+              )}
+            </div>
+          )}
+
+          {done && (
+            <p className="ceb__runner-done" role="status">
+              The script ended here. Restart to play it again.
+            </p>
+          )}
+
+          {path.length > 0 && (
+            <ol className="ceb__path" aria-label="Path taken">
+              {path.map((entry, i) => (
+                <li className="ceb__path-step" key={`${entry.nodeId}-${i}`}>
+                  <code className="ceb__id">{entry.nodeId}</code>
+                  <span className="ceb__path-label">{entry.label}</span>
+                  {entry.choice && (
+                    <span className="ceb__path-choice">chose: {entry.choice}</span>
+                  )}
+                </li>
+              ))}
+            </ol>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 export default function ConvoengineDemo() {
   const flow = useFlow();
   const [confirmReset, setConfirmReset] = useState(false);
@@ -347,6 +493,8 @@ export default function ConvoengineDemo() {
       </div>
 
       <ValidationPanel nodes={flow.nodes} />
+
+      <Runner key={flow.start ?? 'no-start'} flow={flow} />
 
       <ol className="ceb__nodes">
         {flow.nodes.length === 0 && (
