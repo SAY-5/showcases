@@ -3,7 +3,7 @@
 // a candidate (actual) output the user pastes in. A run applies the scorer to
 // every case and yields a pass/fail and a 0..1 score per case, plus an
 // aggregate pass rate. Everything is deterministic: the same inputs always
-// produce the same results. Nothing here calls a model or a network service.
+// produce the same results. Nothing here makes a network call.
 
 // Scorer identifiers. Each maps to a pure comparison in the engine.
 export type ScorerId =

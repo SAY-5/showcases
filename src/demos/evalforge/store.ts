@@ -1,4 +1,4 @@
-// Browser-side model of the case harness. It keeps the suite (cases, chosen
+// Browser-side state for the case harness. It keeps the suite (cases, chosen
 // scorer, tolerance), the last run, and a short run history in localStorage so
 // they survive a reload. A framework-agnostic external store drives the UI
 // through useSyncExternalStore. Nothing here talks to a server: scoring is the

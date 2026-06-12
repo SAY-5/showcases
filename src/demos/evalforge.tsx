@@ -16,7 +16,7 @@ import {
 // In-browser case evaluation harness. Define cases (input + expected), paste a
 // candidate output per case, pick a scorer and tolerance, then run. The suite,
 // the last run, and a short run history persist in localStorage. Scoring is the
-// deterministic engine over the entered values: no model, no network, no eval.
+// deterministic engine over the entered values: no network call, no eval.
 // The regex scorer compiles its pattern safely in a try/catch in the engine.
 
 function pct(n: number): number {
