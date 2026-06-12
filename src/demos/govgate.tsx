@@ -9,13 +9,25 @@
 import '../styles/demo.css';
 import './govgate.css';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import { useGovStore } from './govgate/state';
-import { setControlNote, setControlStatus, setThreshold } from './govgate/store';
-import { groupByCategory, STATUS_LABEL, STATUS_ORDER, SEVERITY_LABEL } from './govgate/format';
+import {
+  resetAssessment,
+  setControlNote,
+  setControlStatus,
+  setThreshold,
+} from './govgate/store';
+import {
+  exportSummary,
+  groupByCategory,
+  STATUS_LABEL,
+  STATUS_ORDER,
+  SEVERITY_LABEL,
+} from './govgate/format';
 import {
   categoryBreakdown,
+  remediationList,
   resultFor,
   scoreAssessment,
   statusCounts,
@@ -101,6 +113,21 @@ export default function GovgateDemo() {
           </fieldset>
         ))}
       </section>
+
+      <Remediation framework={framework} assessment={assessment} />
+
+      <div className="demo__controls">
+        <button
+          type="button"
+          className="demo__btn demo__btn--ghost"
+          onClick={resetAssessment}
+        >
+          Reset assessment
+        </button>
+        <span className="demo__hint">
+          Reset clears your saved answers and restores the seed.
+        </span>
+      </div>
     </div>
   );
 }
@@ -193,6 +220,96 @@ function Scorecard({
             <span className="gg__bar-pct">{cat.percent}%</span>
           </div>
         ))}
+      </div>
+    </section>
+  );
+}
+
+// The remediation view: every not-met or partial control, highest priority
+// first, with its severity and weight, plus a copyable text summary of the whole
+// assessment. The list and the summary text both come from the pure engine.
+function Remediation({
+  framework,
+  assessment,
+}: {
+  framework: Framework;
+  assessment: Assessment;
+}) {
+  const items = useMemo(
+    () => remediationList(framework, assessment),
+    [framework, assessment],
+  );
+  const summary = useMemo(() => {
+    const score = scoreAssessment(framework, assessment);
+    const categories = categoryBreakdown(framework, assessment);
+    return exportSummary(framework.name, score, categories, items);
+  }, [framework, assessment, items]);
+
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(summary);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <section className="gg__remediation glass" aria-label="Remediation">
+      <div className="gg__rem-head">
+        <h4 className="gg__rem-title">Remediation, highest priority first</h4>
+        <span className="gg__rem-sub">
+          {items.length === 0
+            ? 'Nothing open'
+            : `${items.length} open ${items.length === 1 ? 'control' : 'controls'}`}
+        </span>
+      </div>
+
+      {items.length === 0 ? (
+        <p className="gg__rem-empty">
+          Every applicable control is met. Nothing to remediate.
+        </p>
+      ) : (
+        <ol className="gg__rem-list">
+          {items.map((item) => (
+            <li key={item.control.id} className="gg__rem-item">
+              <span className="gg__rem-rank" aria-hidden="true">
+                {item.priority}
+              </span>
+              <span className="gg__rem-body">
+                <span className="gg__rem-name">{item.control.title}</span>
+                <span className="gg__rem-cat">{item.control.category}</span>
+                {item.note.trim() && (
+                  <span className="gg__rem-note">{item.note.trim()}</span>
+                )}
+              </span>
+              <span className="gg__rem-tags">
+                <span className={`gg__sev gg__sev--${item.control.severity}`}>
+                  {SEVERITY_LABEL[item.control.severity]}
+                </span>
+                <span className={`gg__status gg__status--${item.status} is-on`}>
+                  {STATUS_LABEL[item.status]}
+                </span>
+                <span className="gg__weight">w{item.control.weight}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      <div className="gg__export">
+        <div className="gg__export-bar">
+          <span className="gg__export-cap">Exportable summary</span>
+          <button type="button" className="demo__btn" onClick={copy}>
+            {copied ? 'Copied' : 'Copy summary'}
+          </button>
+        </div>
+        <pre className="gg__export-text" tabIndex={0} aria-label="Compliance summary text">
+          {summary}
+        </pre>
       </div>
     </section>
   );
