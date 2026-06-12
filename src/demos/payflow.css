@@ -439,3 +439,52 @@
   font-size: 18px;
   color: var(--text-strong);
 }
+
+/* a11y + polish: focus states, reduced motion, responsive */
+.pf-row:focus-visible,
+.pf-input:focus-visible,
+.pf-toggle input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.pf-badge--captured,
+.pf-badge--authorized,
+.pf-badge--refunded {
+  font-weight: 500;
+}
+.pf-detail__amounts {
+  flex-wrap: wrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pf-row,
+  .pf-row:hover {
+    transition: none;
+    transform: none;
+  }
+}
+@media (max-width: 560px) {
+  .pf-form__row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .pf-input {
+    width: 100%;
+  }
+  .pf-recon__counts {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+}
+
+/* screen-reader-only utility */
+.pf-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

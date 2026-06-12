@@ -298,6 +298,9 @@ function Reconciliation({ intents }: { intents: PaymentIntent[] }) {
         <p className="pf-recon__empty">Nothing to reconcile yet.</p>
       ) : (
         <table className="pf-recon__table">
+          <caption className="pf-sr-only">
+            Authorized, captured, refunded and net settled totals per currency.
+          </caption>
           <thead>
             <tr>
               <th scope="col">Currency</th>
