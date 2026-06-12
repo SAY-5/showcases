@@ -87,9 +87,7 @@
 /* ---- table ---- */
 .efd__table-wrap {
   overflow-x: auto;
-  border: 1px solid var(--line);
   border-radius: 12px;
-  background: var(--ink-900);
 }
 .efd__table {
   width: 100%;
@@ -221,9 +219,7 @@
   gap: 12px;
   margin: 0 0 20px;
   padding: 16px;
-  border: 1px solid var(--line);
   border-radius: 12px;
-  background: var(--ink-800);
 }
 .efd__dl-pair {
   display: flex;
@@ -246,10 +242,8 @@
 
 /* ---- actions ---- */
 .efd__actions {
-  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 16px;
-  background: var(--ink-900);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -569,16 +563,36 @@
   }
 }
 
+/* ---- focus-visible ---- */
+.efd__tab:focus-visible,
+.efd__sort-btn:focus-visible,
+.efd__row:focus-visible,
+.efd__back:focus-visible,
+.efd__retire-btn:focus-visible,
+.efd__alert-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.efd__search:focus-visible,
+.efd__select:focus-visible,
+.efd__assign-input:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 1px;
+}
+
 /* ---- reduced motion ---- */
 @media (prefers-reduced-motion: reduce) {
-  .efd__util-seg {
-    transition: none;
-  }
+  .efd__util-seg,
   .efd__tab,
   .efd__row,
   .efd__search,
+  .efd__select,
   .efd__retire-btn,
-  .efd__alert-link {
+  .efd__alert-link,
+  .efd__summary-card,
+  .efd__sort-btn,
+  .demo__btn {
     transition: none;
   }
 }

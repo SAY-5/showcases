@@ -182,9 +182,9 @@ export default function EquipfleetDemo() {
   // ---- render ----
 
   return (
-    <div className="demo efd" aria-label="EquipFleet asset manager">
+    <div className="demo efd" role="main" aria-label="EquipFleet asset manager">
       <span className="demo__tag">Working app</span>
-      <h3 className="demo__title">EquipFleet, a fleet asset manager</h3>
+      <h3 className="demo__title" id="efd-heading">EquipFleet, a fleet asset manager</h3>
       <p className="demo__lede">
         Track equipment across a construction fleet. Filter, sort, assign assets
         to people, schedule and complete maintenance, retire old gear, and view
@@ -256,7 +256,7 @@ export default function EquipfleetDemo() {
           </div>
 
           {/* table */}
-          <div className="efd__table-wrap" role="region" aria-label="Asset table" tabIndex={0}>
+          <div className="efd__table-wrap glass" role="region" aria-label="Asset table" tabIndex={0}>
             <table className="efd__table">
               <thead>
                 <tr>
@@ -343,7 +343,7 @@ export default function EquipfleetDemo() {
             </span>
           </div>
 
-          <dl className="efd__detail-grid">
+          <dl className="efd__detail-grid glass">
             <div className="efd__dl-pair">
               <dt>ID</dt>
               <dd>{selected.id}</dd>
@@ -385,7 +385,7 @@ export default function EquipfleetDemo() {
           </dl>
 
           {/* actions */}
-          <div className="efd__actions" aria-label="Asset actions">
+          <div className="efd__actions glass" aria-label="Asset actions">
             <h5 className="efd__actions-title">Actions</h5>
 
             {selected.status === 'retired' && (
