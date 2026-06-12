@@ -4,6 +4,7 @@ import '../styles/demo.css';
 import './live-events-spa.css';
 import {
   removeFromAgenda,
+  resetAll,
   schedule,
   toggleAgenda,
   useAgendaIds,
@@ -13,8 +14,10 @@ import {
   conflictingIds,
   filterSessions,
   findConflicts,
+  formatMin,
   formatRange,
   groupByTrack,
+  nowNext,
   tagsOf,
   tracksOf,
 } from './live-events-spa/engine';
@@ -56,6 +59,11 @@ export default function LiveEventsSpaDemo() {
     track: 'all',
     tag: 'all',
   });
+  // The current minute is owned by the component and moved by an explicit
+  // control, so render never reads the wall clock. Defaults to mid-morning so
+  // the now/next strip has something live on first paint.
+  const [nowMin, setNowMin] = useState(615);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const trackColor = useTrackColor();
   const tracks = useMemo(() => tracksOf(schedule), []);
@@ -72,6 +80,17 @@ export default function LiveEventsSpaDemo() {
   const conflictSet = useMemo(() => conflictingIds(agenda), [agenda]);
   const conflicts = useMemo(() => findConflicts(agenda), [agenda]);
 
+  const nn = useMemo(() => nowNext(schedule, nowMin), [nowMin]);
+  const selected = useMemo(
+    () => schedule.find((s) => s.id === selectedId) ?? null,
+    [selectedId],
+  );
+
+  function handleReset() {
+    resetAll();
+    setSelectedId(null);
+  }
+
   return (
     <div className="demo les" data-reduce={reduce ? 'true' : 'false'}>
       <span className="demo__tag">Conference Scheduler</span>
@@ -81,6 +100,14 @@ export default function LiveEventsSpaDemo() {
         then build a personal agenda. Saved sessions persist in your browser and
         are checked for time conflicts.
       </p>
+
+      <NowNextStrip
+        nowMin={nowMin}
+        current={nn.current}
+        next={nn.next}
+        onTimeChange={setNowMin}
+        onPick={setSelectedId}
+      />
 
       <div className="les__tabs" role="tablist" aria-label="Scheduler views">
         <button
@@ -130,6 +157,7 @@ export default function LiveEventsSpaDemo() {
             groups={groups}
             savedSet={savedSet}
             trackColor={trackColor}
+            onOpen={setSelectedId}
           />
         </section>
       )}
@@ -146,9 +174,168 @@ export default function LiveEventsSpaDemo() {
             conflictSet={conflictSet}
             conflictCount={conflicts.length}
             trackColor={trackColor}
+            onOpen={setSelectedId}
           />
         </section>
       )}
+
+      {selected && (
+        <SessionDetail
+          session={selected}
+          saved={savedSet.has(selected.id)}
+          accent={trackColor(selected.track)}
+          onClose={() => setSelectedId(null)}
+        />
+      )}
+
+      <div className="les__footer">
+        <button type="button" className="les__reset" onClick={handleReset}>
+          Reset saved agenda
+        </button>
+        <span className="les__hint">
+          Saved sessions and the agenda are stored in this browser only.
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function NowNextStrip({
+  nowMin,
+  current,
+  next,
+  onTimeChange,
+  onPick,
+}: {
+  nowMin: number;
+  current: PlacedSession[];
+  next: PlacedSession | null;
+  onTimeChange: (min: number) => void;
+  onPick: (id: string) => void;
+}) {
+  return (
+    <div className="les__now glass">
+      <div className="les__nowclock">
+        <label htmlFor="les-clock" className="les__label">
+          Current time
+        </label>
+        <div className="les__nowrow">
+          <input
+            id="les-clock"
+            type="range"
+            className="les__range"
+            min={480}
+            max={1020}
+            step={15}
+            value={nowMin}
+            onChange={(e) => onTimeChange(Number(e.target.value))}
+            aria-valuetext={formatMin(nowMin)}
+          />
+          <output className="les__clockval" htmlFor="les-clock">
+            {formatMin(nowMin)}
+          </output>
+        </div>
+      </div>
+      <div className="les__nowcols">
+        <div className="les__nowcell">
+          <p className="les__nowlabel">Now</p>
+          {current.length === 0 ? (
+            <p className="les__nowempty">Nothing scheduled</p>
+          ) : (
+            <ul className="les__nowlist">
+              {current.map((s) => (
+                <li key={s.id}>
+                  <button
+                    type="button"
+                    className="les__nowlink"
+                    onClick={() => onPick(s.id)}
+                  >
+                    {s.title}
+                    <span className="les__nowmeta"> · {s.room}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div className="les__nowcell">
+          <p className="les__nowlabel">Up next</p>
+          {next ? (
+            <button
+              type="button"
+              className="les__nowlink"
+              onClick={() => onPick(next.id)}
+            >
+              {next.title}
+              <span className="les__nowmeta">
+                {' '}
+                · {formatMin(next.startMin)}
+              </span>
+            </button>
+          ) : (
+            <p className="les__nowempty">Nothing later today</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SessionDetail({
+  session,
+  saved,
+  accent,
+  onClose,
+}: {
+  session: PlacedSession | (typeof schedule)[number];
+  saved: boolean;
+  accent: string;
+  onClose: () => void;
+}) {
+  const placed = 'endMin' in session ? session : null;
+  const range = placed
+    ? formatRange(placed)
+    : `${formatMin(session.startMin)} to ${formatMin(
+        session.startMin + session.durationMin,
+      )}`;
+  return (
+    <div
+      className="les__detail glass"
+      role="region"
+      aria-label={`Session details: ${session.title}`}
+      style={{ borderTopColor: accent }}
+    >
+      <div className="les__detailhead">
+        <p className="les__time">{range}</p>
+        <button
+          type="button"
+          className="les__close"
+          onClick={onClose}
+          aria-label="Close session details"
+        >
+          Close
+        </button>
+      </div>
+      <h4 className="les__detailtitle">{session.title}</h4>
+      <p className="les__cmeta">
+        {session.track} · {session.speaker} · {session.room}
+      </p>
+      <p className="les__abstract">{session.abstract}</p>
+      <ul className="les__tags" aria-label="Tags">
+        {session.tags.map((t) => (
+          <li className="les__pill" key={t}>
+            {t}
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        className={`les__add${saved ? ' les__add--on' : ''}`}
+        aria-pressed={saved}
+        onClick={() => toggleAgenda(session.id)}
+      >
+        {saved ? 'In my agenda' : 'Add to agenda'}
+      </button>
     </div>
   );
 }
@@ -158,11 +345,13 @@ function AgendaView({
   conflictSet,
   conflictCount,
   trackColor,
+  onOpen,
 }: {
   agenda: PlacedSession[];
   conflictSet: Set<string>;
   conflictCount: number;
   trackColor: (track: string) => string;
+  onOpen: (id: string) => void;
 }) {
   if (agenda.length === 0) {
     return (
@@ -190,6 +379,7 @@ function AgendaView({
               session={s}
               conflicted={conflictSet.has(s.id)}
               accent={trackColor(s.track)}
+              onOpen={onOpen}
             />
           </li>
         ))}
@@ -202,10 +392,12 @@ function AgendaRow({
   session,
   conflicted,
   accent,
+  onOpen,
 }: {
   session: PlacedSession;
   conflicted: boolean;
   accent: string;
+  onOpen: (id: string) => void;
 }) {
   return (
     <article
@@ -214,7 +406,15 @@ function AgendaRow({
     >
       <div className="les__rowmain">
         <p className="les__time">{formatRange(session)}</p>
-        <h5 className="les__cardtitle">{session.title}</h5>
+        <h5 className="les__cardtitle">
+          <button
+            type="button"
+            className="les__titlebtn"
+            onClick={() => onOpen(session.id)}
+          >
+            {session.title}
+          </button>
+        </h5>
         <p className="les__cmeta">
           {session.track} · {session.speaker} · {session.room}
         </p>
@@ -319,10 +519,12 @@ function ScheduleTimeline({
   groups,
   savedSet,
   trackColor,
+  onOpen,
 }: {
   groups: { track: string; sessions: PlacedSession[] }[];
   savedSet: Set<string>;
   trackColor: (track: string) => string;
+  onOpen: (id: string) => void;
 }) {
   const hasResults = groups.some((g) => g.sessions.length > 0);
   if (!hasResults) {
@@ -346,6 +548,7 @@ function ScheduleTimeline({
                   session={s}
                   saved={savedSet.has(s.id)}
                   accent={trackColor(s.track)}
+                  onOpen={onOpen}
                 />
               </li>
             ))}
@@ -360,15 +563,25 @@ function SessionCard({
   session,
   saved,
   accent,
+  onOpen,
 }: {
   session: PlacedSession;
   saved: boolean;
   accent: string;
+  onOpen: (id: string) => void;
 }) {
   return (
     <article className="les__card glass" style={{ borderLeftColor: accent }}>
       <p className="les__time">{formatRange(session)}</p>
-      <h5 className="les__cardtitle">{session.title}</h5>
+      <h5 className="les__cardtitle">
+        <button
+          type="button"
+          className="les__titlebtn"
+          onClick={() => onOpen(session.id)}
+        >
+          {session.title}
+        </button>
+      </h5>
       <p className="les__cmeta">
         {session.speaker} · {session.room}
       </p>
