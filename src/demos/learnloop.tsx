@@ -4,11 +4,17 @@ import '../styles/demo.css';
 import './learnloop.css';
 import { SKILLS, bank, skillLabel, type Question, type Skill } from './learnloop/data';
 import { useSession } from './learnloop/state';
-import { nextQuestion, submitAnswer, type LogEntry } from './learnloop/store';
+import {
+  nextQuestion,
+  skillSummaries,
+  submitAnswer,
+  type LogEntry,
+} from './learnloop/store';
 import {
   COOLDOWN,
   K,
   TARGET,
+  bucketLabel,
   expectedSuccess,
   rank,
   scalePct,
@@ -54,6 +60,9 @@ export default function LearnloopDemo() {
     [pool, rating, session.recent],
   );
   const nextId = selected?.id;
+
+  // Per-skill live readouts: rating, mastery bucket, and answered counts.
+  const summaries = useMemo(() => skillSummaries(session), [session]);
 
   const onAnswer = useCallback(
     (choice: number) => {
@@ -113,6 +122,13 @@ export default function LearnloopDemo() {
           onAnswer={onAnswer}
           onNext={onNext}
           reduce={!!reduce}
+        />
+
+        <Readouts
+          summaries={summaries}
+          activeSkill={skill}
+          nextDiff={selected?.diff}
+          nextExpected={selected ? expectedSuccess(rating, selected.diff) : null}
         />
       </div>
 
@@ -176,6 +192,74 @@ function Rail({
         <span>{SCALE_MIN}</span>
         <span>easier · harder</span>
         <span>{SCALE_MAX}</span>
+      </div>
+    </div>
+  );
+}
+
+// ---------- live readouts ----------
+
+function Readouts({
+  summaries,
+  activeSkill,
+  nextDiff,
+  nextExpected,
+}: {
+  summaries: ReturnType<typeof skillSummaries>;
+  activeSkill: Skill;
+  nextDiff: number | undefined;
+  nextExpected: number | null;
+}) {
+  return (
+    <div className="lla__readouts">
+      <div className="lla__ratings glass">
+        <div className="lla__panel-title">Per-skill rating and mastery</div>
+        <ul className="lla__rating-list">
+          {summaries.map((s) => (
+            <li
+              key={s.skill}
+              className={`lla__rating-row ${
+                s.skill === activeSkill ? 'lla__rating-row--on' : ''
+              }`}
+            >
+              <span className="lla__rating-name">{skillLabel(s.skill)}</span>
+              <span className="lla__rating-elo">{Math.round(s.rating)}</span>
+              <span className={`lla__chip lla__chip--${s.bucket}`}>
+                {bucketLabel(s.bucket)}
+              </span>
+              <span className="lla__rating-count">
+                {s.correct}/{s.answered}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="lla__target glass">
+        <div className="lla__panel-title">Selector target</div>
+        {nextExpected === null || nextDiff === undefined ? (
+          <p className="lla__card-empty">Pick a skill to see the next item.</p>
+        ) : (
+          <>
+            <div className="lla__target-val">
+              {Math.round(nextExpected * 100)}
+              <span className="lla__target-unit">% expected</span>
+            </div>
+            <div className="lla__target-bar" aria-hidden="true">
+              <span
+                className="lla__target-fill"
+                style={{ width: `${Math.round(nextExpected * 100)}%` }}
+              />
+              <span
+                className="lla__target-mark"
+                style={{ left: `${Math.round(TARGET * 100)}%` }}
+              />
+            </div>
+            <div className="lla__target-meta">
+              next item difficulty {nextDiff} · target {Math.round(TARGET * 100)}%
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
