@@ -64,6 +64,12 @@
     border-color 0.2s ease,
     background 0.2s ease;
 }
+.tbk__col--over {
+  border-color: var(--accent-line);
+  background:
+    radial-gradient(220px 140px at 50% 0%, var(--accent-soft), transparent 70%),
+    var(--glass-bg);
+}
 .tbk__col-head {
   display: flex;
   align-items: center;
@@ -117,6 +123,30 @@
 }
 .tbk__card:hover {
   border-color: var(--accent-line);
+}
+.tbk__card {
+  cursor: grab;
+}
+.tbk__card:active {
+  cursor: grabbing;
+}
+.tbk__card--drag {
+  opacity: 0.5;
+  border-style: dashed;
+}
+.tbk__card--grab {
+  border-color: var(--magenta);
+  box-shadow:
+    0 0 0 2px var(--magenta-soft),
+    0 8px 22px rgba(0, 0, 0, 0.4);
+}
+.tbk__card-grip {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  margin-right: auto;
+  user-select: none;
 }
 .tbk__card-main {
   display: flex;
