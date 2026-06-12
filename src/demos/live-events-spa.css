@@ -408,6 +408,23 @@
   border-top: 3px solid var(--accent);
   padding: 16px 18px;
 }
+.les__detail:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.les__detail {
+  animation: les-fade 0.22s ease both;
+}
+@keyframes les-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 .les__detailhead {
   display: flex;
   align-items: center;
@@ -495,5 +512,8 @@
   .les__add,
   .les__remove {
     transition: none;
+  }
+  .les__detail {
+    animation: none;
   }
 }

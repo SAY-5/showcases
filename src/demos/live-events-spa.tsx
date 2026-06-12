@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import '../styles/demo.css';
 import './live-events-spa.css';
@@ -236,7 +236,7 @@ function NowNextStrip({
           </output>
         </div>
       </div>
-      <div className="les__nowcols">
+      <div className="les__nowcols" aria-live="polite">
         <div className="les__nowcell">
           <p className="les__nowlabel">Now</p>
           {current.length === 0 ? (
@@ -292,6 +292,12 @@ function SessionDetail({
   accent: string;
   onClose: () => void;
 }) {
+  // Move focus to the detail region when it opens so keyboard users are taken
+  // straight to the newly revealed content.
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    ref.current?.focus();
+  }, [session.id]);
   const placed = 'endMin' in session ? session : null;
   const range = placed
     ? formatRange(placed)
@@ -302,6 +308,8 @@ function SessionDetail({
     <div
       className="les__detail glass"
       role="region"
+      tabIndex={-1}
+      ref={ref}
       aria-label={`Session details: ${session.title}`}
       style={{ borderTopColor: accent }}
     >
