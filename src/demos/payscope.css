@@ -346,6 +346,7 @@
   gap: 14px;
 }
 
+/* responsive */
 @media (max-width: 620px) {
   .ps__form-row {
     flex-direction: column;
@@ -353,4 +354,37 @@
   .ps__meter-pick-fields {
     flex-direction: column;
   }
+  .ps__period-row {
+    flex-direction: column;
+  }
+  .ps__invoice-table {
+    font-size: 10px;
+  }
+  .ps__invoice-table th,
+  .ps__invoice-table td {
+    padding: 5px 4px;
+  }
+}
+
+/* reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .ps__tab,
+  .ps__list-item,
+  .ps__meter-pick,
+  .ps__remove,
+  .ps__meter-pick-toggle {
+    transition: none;
+  }
+}
+
+/* scrollbar for event log */
+.ps__event-log::-webkit-scrollbar {
+  width: 6px;
+}
+.ps__event-log::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ps__event-log::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 3px;
 }

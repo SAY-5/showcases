@@ -62,13 +62,11 @@ function UsagePanel() {
 
   const meterMap = new Map(store.meters.map((m) => [m.id, m]));
 
-  let keyCounter = 0;
-  function nextKey(): string {
-    keyCounter += 1;
-    return `k-${Date.now().toString(36)}-${keyCounter}-${Math.random().toString(36).slice(2, 6)}`;
+  function freshKey(): string {
+    return `k-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   }
 
-  const [idempKey, setIdempKey] = useState(() => nextKey());
+  const [idempKey, setIdempKey] = useState(freshKey);
 
   function handleRecord() {
     const q = parseFloat(qty);
@@ -76,7 +74,7 @@ function UsagePanel() {
     const added = addEvent(meterId, q, idempKey);
     setLastDup(!added);
     if (added) {
-      setIdempKey(nextKey());
+      setIdempKey(freshKey());
       setQty('1');
     }
   }
@@ -269,15 +267,15 @@ function InvoicePanel() {
                   {inv.planName} | {formatDate(inv.periodStart)} to {formatDate(inv.periodEnd)}
                 </span>
               </div>
-              <table className="ps__invoice-table">
+              <table className="ps__invoice-table" aria-label={`Invoice ${inv.id} details`}>
                 <thead>
                   <tr>
-                    <th>Meter</th>
-                    <th>Usage</th>
-                    <th>Included</th>
-                    <th>Overage</th>
-                    <th>Rate</th>
-                    <th className="ps__td-right">Charge</th>
+                    <th scope="col">Meter</th>
+                    <th scope="col">Usage</th>
+                    <th scope="col">Included</th>
+                    <th scope="col">Overage</th>
+                    <th scope="col">Rate</th>
+                    <th scope="col" className="ps__td-right">Charge</th>
                   </tr>
                 </thead>
                 <tbody>
