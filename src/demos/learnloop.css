@@ -466,3 +466,21 @@
     display: none;
   }
 }
+
+/* ---------- focus states ---------- */
+.lla__skill:focus-visible,
+.lla__option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .lla__skill,
+  .lla__option {
+    transition: none;
+  }
+  .lla__option:hover:not(:disabled) {
+    transform: none;
+  }
+}

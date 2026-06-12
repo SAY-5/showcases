@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type KeyboardEvent } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import '../styles/demo.css';
 import './learnloop.css';
@@ -88,6 +88,16 @@ export default function LearnloopDemo() {
     setSkill(next);
   }
 
+  // Left/right arrow keys move between skill tabs, the expected tablist pattern.
+  function onTabsKey(e: KeyboardEvent) {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    e.preventDefault();
+    const idx = SKILLS.findIndex((s) => s.id === skill);
+    const step = e.key === 'ArrowRight' ? 1 : -1;
+    const nextIdx = (idx + step + SKILLS.length) % SKILLS.length;
+    pickSkill(SKILLS[nextIdx].id);
+  }
+
   return (
     <div className="demo" aria-label="LearnLoop adaptive practice session">
       <span className="demo__tag">Adaptive practice</span>
@@ -99,12 +109,21 @@ export default function LearnloopDemo() {
         the 70 percent target. Your progress is saved in this browser.
       </p>
 
-      <div className="lla__skills" role="tablist" aria-label="Skill">
+      <div
+        className="lla__skills"
+        role="tablist"
+        aria-label="Skill to practice"
+        onKeyDown={onTabsKey}
+      >
         {SKILLS.map((s) => (
           <button
             key={s.id}
+            type="button"
             role="tab"
+            id={`lla-tab-${s.id}`}
             aria-selected={skill === s.id}
+            aria-controls="lla-panel"
+            tabIndex={skill === s.id ? 0 : -1}
             className={`lla__skill ${skill === s.id ? 'lla__skill--on' : ''}`}
             onClick={() => pickSkill(s.id)}
           >
@@ -143,7 +162,7 @@ export default function LearnloopDemo() {
       </div>
 
       <div className="demo__controls">
-        <button className="demo__btn demo__btn--ghost" onClick={onReset}>
+        <button type="button" className="demo__btn demo__btn--ghost" onClick={onReset}>
           Reset session
         </button>
         <span className="demo__hint">
@@ -171,8 +190,14 @@ function Rail({
   reduce: boolean;
 }) {
   return (
-    <div className="lla__rail" aria-label="Difficulty scale" role="img">
-      <div className="lla__rail-track">
+    <div
+      className="lla__rail"
+      role="img"
+      aria-label={`Difficulty scale from ${SCALE_MIN} to ${SCALE_MAX}. Your rating is ${Math.round(
+        rating,
+      )}. Dots mark each question difficulty; the highlighted dot is the next item.`}
+    >
+      <div className="lla__rail-track" aria-hidden="true">
         {/* The 70 percent target band, drawn relative to the learner rating. */}
         {ranked.map((r) => {
           const isNext = r.q.id === nextId;
@@ -362,7 +387,12 @@ function QuestionCard({
 }) {
   if (!question) {
     return (
-      <div className="lla__card glass">
+      <div
+        className="lla__card glass"
+        role="tabpanel"
+        id="lla-panel"
+        aria-labelledby={`lla-tab-${skill}`}
+      >
         <p className="lla__card-empty">No questions available for this skill.</p>
       </div>
     );
@@ -374,6 +404,9 @@ function QuestionCard({
   return (
     <motion.div
       className="lla__card glass"
+      role="tabpanel"
+      id="lla-panel"
+      aria-labelledby={`lla-tab-${skill}`}
       key={question.id + (graded ? '-graded' : '')}
       initial={{ opacity: reduce ? 1 : 0, y: reduce ? 0 : 6 }}
       animate={{ opacity: 1, y: 0 }}
@@ -402,6 +435,7 @@ function QuestionCard({
           return (
             <button
               key={i}
+              type="button"
               className={`lla__option ${state ? `lla__option--${state}` : ''}`}
               onClick={() => onAnswer(i)}
               disabled={!!graded}
@@ -433,7 +467,7 @@ function QuestionCard({
                 {graded.entry.after - graded.entry.before}
               </b>
             </span>
-            <button className="demo__btn" onClick={onNext}>
+            <button type="button" className="demo__btn" onClick={onNext}>
               Next question
             </button>
           </>
