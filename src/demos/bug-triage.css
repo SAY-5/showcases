@@ -267,6 +267,11 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  scroll-margin-top: 20px;
+}
+.bt__detail:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .bt__detail-head {
   display: flex;

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import '../styles/demo.css';
 import './bug-triage.css';
@@ -362,6 +362,21 @@ function BugDetail({
   const ready = completeness(bug);
   const dupes = useMemo(() => findDuplicates(bug, bugs), [bug, bugs]);
   const [statusError, setStatusError] = useState<string[]>([]);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Move focus to the panel when it opens and let Escape dismiss it, so the
+  // detail is keyboard-reachable without trapping the user.
+  useEffect(() => {
+    panelRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   function tryStatus(status: Status) {
     const r = setStatus(bug.id, status);
@@ -374,10 +389,12 @@ function BugDetail({
 
   return (
     <div
+      ref={panelRef}
       className="bt__detail glass"
       role="dialog"
       aria-modal="false"
       aria-label={`Bug ${bug.id} detail`}
+      tabIndex={-1}
     >
       <header className="bt__detail-head">
         <div>
