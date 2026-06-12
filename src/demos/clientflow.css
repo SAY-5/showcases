@@ -1,5 +1,26 @@
 /* clientflow: no-code rules engine. All color comes from theme tokens. */
 
+.cf__tabpanel {
+  outline: none;
+}
+.cf__tabpanel:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
+/* Cinematic glass on the major surfaces, layered over the ink base so the
+   blur reads against the page background. */
+.cf__form,
+.cf__list,
+.cf__panel,
+.cf__publish {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+}
+
 .cf__tabs {
   display: flex;
   flex-wrap: wrap;
@@ -584,5 +605,20 @@
   }
   .cf__field-input {
     width: 100%;
+  }
+}
+
+/* Honour a reduced-motion preference: keep the state changes, drop the
+   transitions so nothing animates. */
+@media (prefers-reduced-motion: reduce) {
+  .cf__tab,
+  .cf__rule,
+  .cf__chip,
+  .cf__fire,
+  .cf__ver-row,
+  .cf__field-toggle,
+  .cf__input,
+  .cf__select {
+    transition: none;
   }
 }

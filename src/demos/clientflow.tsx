@@ -71,9 +71,17 @@ export default function ClientflowDemo() {
         <TabButton id="versions" view={view} setView={setView} label="Versions" />
       </div>
 
-      {view === 'build' && <Builder rules={state.draft} />}
-      {view === 'run' && <RunPanel />}
-      {view === 'versions' && <VersionsPanel state={state} />}
+      <div
+        role="tabpanel"
+        id={`cf-panel-${view}`}
+        aria-labelledby={`cf-tab-${view}`}
+        tabIndex={0}
+        className="cf__tabpanel"
+      >
+        {view === 'build' && <Builder rules={state.draft} />}
+        {view === 'run' && <RunPanel />}
+        {view === 'versions' && <VersionsPanel state={state} />}
+      </div>
     </div>
   );
 }
@@ -94,7 +102,10 @@ function TabButton({
     <button
       type="button"
       role="tab"
+      id={`cf-tab-${id}`}
       aria-selected={active}
+      aria-controls={`cf-panel-${id}`}
+      tabIndex={active ? 0 : -1}
       className={`cf__tab${active ? ' cf__tab--active' : ''}`}
       onClick={() => setView(id)}
     >
@@ -632,7 +643,9 @@ function VersionsPanel({ state }: { state: State }) {
           </button>
         </div>
         {draftErrors.length > 0 && <ErrorList errors={draftErrors} />}
-        {feedback && <p className="cf__feedback">{feedback}</p>}
+        <p className="cf__feedback" aria-live="polite">
+          {feedback}
+        </p>
       </div>
 
       <div className="cf__panel">
