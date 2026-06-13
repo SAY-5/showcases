@@ -74,6 +74,129 @@
   margin-left: auto;
 }
 
+/* Config controls */
+.tp__controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  padding: 16px 18px;
+  border-radius: var(--radius);
+}
+
+.tp__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tp__field-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.tp__field-label b {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.tp__field input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* Worker pool */
+.tp__workers {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: var(--radius);
+}
+
+.tp__workers-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.tp__workers-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.tp-worker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--ink-700);
+  border: 1px solid var(--line);
+}
+
+.tp-worker__id {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.tp-worker__state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--text-strong);
+}
+
+.tp-worker--idle .tp-worker__state {
+  color: var(--text-faint);
+}
+
+.tp-worker--busy {
+  border-color: var(--accent-line);
+  box-shadow: 0 0 0 1px var(--accent-soft) inset;
+}
+
+.tp-worker--busy .tp-worker__state {
+  color: var(--accent);
+}
+
+.tp-worker__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+  animation: tp-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes tp-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tp-worker__dot {
+    animation: none;
+  }
+}
+
 /* Status board */
 .tp__board {
   display: grid;
