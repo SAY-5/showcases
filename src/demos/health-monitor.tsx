@@ -3,9 +3,17 @@ import { useReducedMotion } from 'framer-motion';
 import '../styles/demo.css';
 import './health-monitor.css';
 import { useStore } from './health-monitor/state';
-import { setThreshold, snapshot } from './health-monitor/store';
+import {
+  resetAll,
+  setThreshold,
+  snapshot,
+  tick as advanceTick,
+} from './health-monitor/store';
 import { sparklinePath } from './health-monitor/engine';
 import type {
+  Alert,
+  Incident,
+  Rollup,
   ServiceHealth,
   Status,
   Thresholds,
@@ -223,6 +231,86 @@ function ServiceDetail({
   );
 }
 
+// Top summary bar: how many services sit in each status right now. Updates on
+// every tick and whenever a threshold edit moves a service across a band.
+function RollupBar({ rollup }: { rollup: Rollup }) {
+  const cells: { status: Status; label: string; count: number }[] = [
+    { status: 'up', label: 'operational', count: rollup.up },
+    { status: 'degraded', label: 'degraded', count: rollup.degraded },
+    { status: 'down', label: 'down', count: rollup.down },
+  ];
+  return (
+    <div className="hm__rollup" role="status" aria-live="polite">
+      {cells.map((c) => (
+        <div key={c.status} className={`hm__roll hm__roll--${c.status}`}>
+          <span className="hm__roll-count">{c.count}</span>
+          <span className="hm__roll-label">{c.label}</span>
+        </div>
+      ))}
+      <div className="hm__roll hm__roll--total">
+        <span className="hm__roll-count">{rollup.total}</span>
+        <span className="hm__roll-label">total</span>
+      </div>
+    </div>
+  );
+}
+
+// Firing alerts across the fleet, criticals first. Empty when the whole fleet
+// is within thresholds.
+function AlertsPanel({ alerts }: { alerts: Alert[] }) {
+  return (
+    <section className="hm__alerts glass" aria-label="firing alerts">
+      <h4 className="hm__section-title">
+        Firing alerts <span className="hm__count">{alerts.length}</span>
+      </h4>
+      {alerts.length === 0 ? (
+        <p className="hm__empty">No alerts firing.</p>
+      ) : (
+        <ul className="hm__alert-list">
+          {alerts.map((a) => (
+            <li
+              key={a.id}
+              className={`hm__alert hm__alert--${a.severity}`}
+            >
+              <span className="hm__alert-sev">{a.severity}</span>
+              <span className="hm__alert-svc">{a.serviceName}</span>
+              <span className="hm__alert-msg">{a.message}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+// Durable incident log: every status transition recorded over the ticks.
+function IncidentLog({ incidents }: { incidents: Incident[] }) {
+  return (
+    <section className="hm__incidents glass" aria-label="incident log">
+      <h4 className="hm__section-title">Incident log</h4>
+      {incidents.length === 0 ? (
+        <p className="hm__empty">No transitions recorded yet.</p>
+      ) : (
+        <ul className="hm__incident-list">
+          {incidents.map((i) => (
+            <li key={i.id} className="hm__incident">
+              <span className="hm__incident-tick">t{i.tick}</span>
+              <span className="hm__incident-svc">{i.serviceName}</span>
+              <span className="hm__incident-move">
+                <span className={`hm__chip hm__chip--${i.from}`}>{i.from}</span>
+                <span aria-hidden="true" className="hm__arrow">
+                  &rarr;
+                </span>
+                <span className={`hm__chip hm__chip--${i.to}`}>{i.to}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 export default function HealthMonitorDemo() {
   useReducedMotion();
   const state = useStore();
@@ -247,6 +335,8 @@ export default function HealthMonitorDemo() {
         thresholds. Advance the clock to watch the fleet drift and alerts fire.
       </p>
 
+      <RollupBar rollup={snap.rollup} />
+
       <div className="hm__stage">
         <section className="hm__fleet" aria-label="service fleet">
           <h4 className="hm__section-title">Services</h4>
@@ -266,6 +356,28 @@ export default function HealthMonitorDemo() {
         {selected && (
           <ServiceDetail health={selected} thresholds={state.thresholds} />
         )}
+      </div>
+
+      <div className="hm__panels">
+        <AlertsPanel alerts={snap.alerts} />
+        <IncidentLog incidents={state.incidents} />
+      </div>
+
+      <div className="demo__controls">
+        <button type="button" className="demo__btn" onClick={advanceTick}>
+          Advance clock
+        </button>
+        <button
+          type="button"
+          className="demo__btn demo__btn--ghost"
+          onClick={resetAll}
+        >
+          Reset
+        </button>
+        <span className="demo__hint">
+          tick {state.tick} · {snap.rollup.down} down · {snap.alerts.length}{' '}
+          alert{snap.alerts.length === 1 ? '' : 's'} firing
+        </span>
       </div>
     </div>
   );
