@@ -12,13 +12,19 @@ import { useConfigDoc } from './configmesh/state';
 import {
   addKey,
   clearBase,
+  clearOverride,
   deleteKey,
   resetAll,
   setBase,
+  setOverride,
   updateKey,
 } from './configmesh/store';
-import { coerceValue } from './configmesh/engine';
-import type { ConfigType, ConfigValue } from './configmesh/types';
+import {
+  coerceValue,
+  formatValue,
+  resolveEnvironment,
+} from './configmesh/engine';
+import type { ConfigKey, ConfigType, ConfigValue } from './configmesh/types';
 
 const TYPES: ConfigType[] = ['string', 'number', 'bool'];
 
@@ -244,6 +250,190 @@ function KeysPanel() {
   );
 }
 
+// A value editor for one key, used by the environment panel to set or clear an
+// override. Booleans use a tri-state select (inherit / true / false); other
+// types use a text input committed on blur or Enter.
+function ValueEditor({
+  envId,
+  configKey,
+  currentValue,
+  overridden,
+}: {
+  envId: string;
+  configKey: ConfigKey;
+  currentValue: ConfigValue | undefined;
+  overridden: boolean;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+
+  function commit(raw: string) {
+    setDraft(null);
+    if (raw.trim() === '') {
+      clearOverride(envId, configKey.name);
+      return;
+    }
+    const value = coerceValue(raw, configKey.type);
+    if (value === null) return;
+    setOverride(envId, configKey.name, value);
+  }
+
+  if (configKey.type === 'bool') {
+    return (
+      <select
+        className="cm-input cm-input--sm"
+        aria-label={`override ${configKey.name}`}
+        value={overridden ? String(currentValue) : ''}
+        onChange={(e) =>
+          e.target.value === ''
+            ? clearOverride(envId, configKey.name)
+            : setOverride(envId, configKey.name, e.target.value === 'true')
+        }
+      >
+        <option value="">inherit</option>
+        <option value="true">true</option>
+        <option value="false">false</option>
+      </select>
+    );
+  }
+
+  const shown =
+    draft !== null
+      ? draft
+      : overridden && currentValue !== undefined
+        ? String(currentValue)
+        : '';
+
+  return (
+    <input
+      className="cm-input cm-input--sm"
+      aria-label={`override ${configKey.name}`}
+      inputMode={configKey.type === 'number' ? 'decimal' : 'text'}
+      placeholder="inherit"
+      value={shown}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={(e) => commit(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          commit((e.target as HTMLInputElement).value);
+        }
+      }}
+    />
+  );
+}
+
+function EnvironmentPanel() {
+  const doc = useConfigDoc();
+  const [activeId, setActiveId] = useState(doc.environments[0]?.id ?? '');
+
+  // Guard against a stored active id that no longer exists.
+  const active =
+    doc.environments.find((e) => e.id === activeId) ?? doc.environments[0];
+  if (!active) return null;
+
+  const rows = resolveEnvironment(doc, active);
+  const overrideCount = rows.filter((r) => r.overridden).length;
+
+  return (
+    <section className="cm-panel glass" aria-labelledby="cm-env-h">
+      <div className="cm-panel__head">
+        <h4 id="cm-env-h" className="cm-panel__title">
+          Environment view
+        </h4>
+        <span className="cm-panel__meta">
+          {overrideCount} of {rows.length} overridden
+        </span>
+      </div>
+
+      <div className="cm-tabs" role="tablist" aria-label="select environment">
+        {doc.environments.map((env) => {
+          const isActive = env.id === active.id;
+          return (
+            <button
+              key={env.id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              className={`cm-tab${isActive ? ' cm-tab--active' : ''}`}
+              onClick={() => setActiveId(env.id)}
+            >
+              {env.name}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="cm-table-wrap">
+        <table className="cm-table">
+          <caption className="cm-sr-only">
+            Effective values for the {active.name} environment
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Key</th>
+              <th scope="col">Source</th>
+              <th scope="col">Effective value</th>
+              <th scope="col">Override</th>
+              <th scope="col">
+                <span className="cm-sr-only">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const configKey = doc.keys.find((k) => k.name === row.name)!;
+              return (
+                <tr key={row.name}>
+                  <th scope="row" className="cm-key-name mono">
+                    {row.name}
+                  </th>
+                  <td>
+                    <span
+                      className={`cm-badge ${
+                        row.overridden
+                          ? 'cm-badge--override'
+                          : 'cm-badge--inherit'
+                      }`}
+                    >
+                      {row.overridden ? 'override' : 'inherited'}
+                    </span>
+                  </td>
+                  <td className="cm-val">
+                    {row.value === undefined ? (
+                      <span className="cm-unset">{formatValue(row.value)}</span>
+                    ) : (
+                      formatValue(row.value)
+                    )}
+                  </td>
+                  <td>
+                    <ValueEditor
+                      envId={active.id}
+                      configKey={configKey}
+                      currentValue={row.value}
+                      overridden={row.overridden}
+                    />
+                  </td>
+                  <td className="cm-row-actions">
+                    <button
+                      type="button"
+                      className="cm-icon-btn"
+                      aria-label={`clear override for ${row.name} in ${active.name}`}
+                      disabled={!row.overridden}
+                      onClick={() => clearOverride(active.id, row.name)}
+                    >
+                      Clear
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 export default function ConfigmeshDemo() {
   const doc = useConfigDoc();
 
@@ -258,6 +448,7 @@ export default function ConfigmeshDemo() {
       </p>
 
       <KeysPanel />
+      <EnvironmentPanel />
 
       <div className="demo__controls">
         <button
