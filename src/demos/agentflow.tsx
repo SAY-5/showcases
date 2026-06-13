@@ -233,7 +233,7 @@ export default function AgentflowDemo() {
                 <span className="af__attempt-no">try {a.attempt}</span>
                 <span className="af__attempt-dur">{a.durationMs} ms</span>
                 <span className="af__attempt-back">
-                  {a.backoffMs > 0 ? `backoff ${a.backoffMs} ms` : '—'}
+                  {a.backoffMs > 0 ? `backoff ${a.backoffMs} ms` : 'no backoff'}
                 </span>
                 <span
                   className={`af__attempt-badge af__attempt-badge--${a.outcome}`}
