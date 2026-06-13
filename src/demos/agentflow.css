@@ -39,6 +39,10 @@
   border-radius: 12px;
   background: var(--ink-800);
   padding: 12px 14px;
+  transition: border-color 0.18s ease;
+}
+.af__step:focus-within {
+  border-color: var(--accent-line);
 }
 .af__step-bar {
   display: flex;
@@ -305,6 +309,19 @@
   padding: 10px 12px;
   background: var(--ink-800);
 }
+.af__attempt {
+  animation: af-row-in 0.28s ease both;
+}
+@keyframes af-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 .af__attempt--ok {
   border-left-color: var(--ok);
 }
@@ -379,5 +396,15 @@
   }
   .af__hist-row {
     grid-template-columns: auto 1fr auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .af__attempt {
+    animation: none;
+  }
+  .af__step,
+  .af__icon-btn {
+    transition: none;
   }
 }
