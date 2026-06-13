@@ -1,9 +1,54 @@
 import '../styles/demo.css';
 import './datafinder.css';
 import { money } from './datafinder/data';
-import { currentResult, setPage, setSort, setText } from './datafinder/store';
-import { SORT_LABELS, SORT_MODES } from './datafinder/types';
+import {
+  currentResult,
+  setMaxPrice,
+  setMinPrice,
+  setMinRating,
+  setPage,
+  setSort,
+  setText,
+  toggleCategory,
+  toggleTag,
+} from './datafinder/store';
+import {
+  SORT_LABELS,
+  SORT_MODES,
+  type FacetCount,
+} from './datafinder/types';
 import { useStore } from './datafinder/state';
+
+// One facet row: a checkbox labelled with its value and the live count of
+// records that selecting it would yield, given the other active filters. A
+// value with a zero count is disabled so the user cannot reach an empty set.
+function FacetRow({
+  facet,
+  onToggle,
+}: {
+  facet: FacetCount;
+  onToggle: (value: string) => void;
+}) {
+  return (
+    <li className="dfx__facet">
+      <label
+        className={`dfx__facet-label${facet.count === 0 && !facet.selected ? ' dfx__facet-label--empty' : ''}`}
+      >
+        <input
+          type="checkbox"
+          className="dfx__facet-box"
+          checked={facet.selected}
+          disabled={facet.count === 0 && !facet.selected}
+          onChange={() => onToggle(facet.value)}
+        />
+        <span className="dfx__facet-value">{facet.value}</span>
+        <span className="dfx__facet-count" aria-label={`${facet.count} records`}>
+          {facet.count}
+        </span>
+      </label>
+    </li>
+  );
+}
 
 // DataFinder is a fully in-browser faceted catalog explorer. The user types a
 // query, the engine filters and scores the seeded catalog, and the results
@@ -27,6 +72,77 @@ export default function DatafinderDemo() {
       </p>
 
       <div className="dfx">
+        <aside className="dfx__sidebar glass" aria-label="filters">
+          <fieldset className="dfx__group">
+            <legend className="dfx__group-title">Category</legend>
+            <ul className="dfx__facets">
+              {result.categoryFacets.map((f) => (
+                <FacetRow key={f.value} facet={f} onToggle={toggleCategory} />
+              ))}
+            </ul>
+          </fieldset>
+
+          <fieldset className="dfx__group">
+            <legend className="dfx__group-title">Tags</legend>
+            <ul className="dfx__facets">
+              {result.tagFacets.map((f) => (
+                <FacetRow key={f.value} facet={f} onToggle={toggleTag} />
+              ))}
+            </ul>
+          </fieldset>
+
+          <fieldset className="dfx__group">
+            <legend className="dfx__group-title">
+              Price: {money(query.minPrice)} to {money(query.maxPrice)}
+            </legend>
+            <label className="dfx__range">
+              <span className="dfx__range-label">Min price</span>
+              <input
+                type="range"
+                className="dfx__range-input"
+                min={result.priceBounds.min}
+                max={result.priceBounds.max}
+                step={1}
+                value={query.minPrice}
+                onChange={(e) => setMinPrice(Number(e.target.value))}
+                aria-label="Minimum price"
+              />
+            </label>
+            <label className="dfx__range">
+              <span className="dfx__range-label">Max price</span>
+              <input
+                type="range"
+                className="dfx__range-input"
+                min={result.priceBounds.min}
+                max={result.priceBounds.max}
+                step={1}
+                value={query.maxPrice}
+                onChange={(e) => setMaxPrice(Number(e.target.value))}
+                aria-label="Maximum price"
+              />
+            </label>
+          </fieldset>
+
+          <fieldset className="dfx__group">
+            <legend className="dfx__group-title">
+              Minimum rating: {query.minRating.toFixed(1)}
+            </legend>
+            <label className="dfx__range">
+              <span className="dfx__visually-hidden">Minimum rating</span>
+              <input
+                type="range"
+                className="dfx__range-input"
+                min={0}
+                max={5}
+                step={0.5}
+                value={query.minRating}
+                onChange={(e) => setMinRating(Number(e.target.value))}
+                aria-label="Minimum rating"
+              />
+            </label>
+          </fieldset>
+        </aside>
+
         <section className="dfx__main" aria-label="search results">
           <div className="dfx__searchbar">
             <label className="dfx__search-field">
