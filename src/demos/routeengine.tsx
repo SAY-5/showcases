@@ -150,9 +150,12 @@ export default function RouteengineDemo() {
             className="re__svg"
             viewBox={`0 0 ${VIEW} ${VIEW}`}
             role="img"
-            aria-label={`Route map with ${stops.length} stops`}
+            aria-label={`Route map with ${stops.length} stops, total distance ${fmt(route.total)}`}
             onClick={handleMapClick}
           >
+            <title>
+              Delivery route from the depot through {stops.length} stops and back
+            </title>
             <defs>
               <pattern
                 id="re-grid"
@@ -190,6 +193,20 @@ export default function RouteengineDemo() {
           <p className="re__hint" aria-live="polite">
             Click the map to {mode === 'depot' ? 'move the depot' : 'add a stop'}.
           </p>
+          <ul className="re__legend" aria-label="Map legend">
+            <li className="re__legenditem">
+              <span className="re__swatch re__swatch--depot" aria-hidden="true" />
+              Depot
+            </li>
+            <li className="re__legenditem">
+              <span className="re__swatch re__swatch--stop" aria-hidden="true" />
+              Stop
+            </li>
+            <li className="re__legenditem">
+              <span className="re__swatch re__swatch--path" aria-hidden="true" />
+              Route
+            </li>
+          </ul>
         </div>
 
         <div className="re__panel glass">

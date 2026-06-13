@@ -111,6 +111,40 @@
   color: var(--text-faint);
   font-size: 0.8rem;
 }
+.re__legend {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 8px 0 0;
+  padding: 0;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+.re__legenditem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.re__swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.re__swatch--depot {
+  background: var(--accent);
+}
+.re__swatch--stop {
+  background: var(--magenta);
+  border-radius: 50%;
+}
+.re__swatch--path {
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
 
 /* Side panel: stops list, actions, summary. */
 .re__panel {
