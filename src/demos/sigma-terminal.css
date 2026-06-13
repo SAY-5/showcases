@@ -243,6 +243,11 @@
 
 .st__rowactions {
   text-align: right;
+  white-space: nowrap;
+}
+
+.st__rowactions .st__remove + .st__remove {
+  margin-left: 6px;
 }
 
 .st__remove {
