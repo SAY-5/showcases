@@ -1,12 +1,24 @@
 import './task-processor.css';
 import {
+  enqueue,
   LIMITS,
+  reset,
+  runTicks,
+  selectMetrics,
   setConcurrency,
   setFailRate,
   setMaxRetries,
+  step,
   useSim,
 } from './task-processor/store';
-import type { Job, JobStatus, SimState, Worker } from './task-processor/types';
+import type {
+  Job,
+  JobStatus,
+  Metrics,
+  SimState,
+  TrendPoint,
+  Worker,
+} from './task-processor/types';
 
 // Columns the queue board renders, left to right along a job's lifecycle.
 const COLUMNS: { status: JobStatus; label: string }[] = [
@@ -90,6 +102,116 @@ function Controls({ sim }: { sim: SimState }) {
   );
 }
 
+const METRIC_TILES: { key: keyof Metrics; label: string; tone?: string }[] = [
+  { key: 'queued', label: 'queued' },
+  { key: 'inFlight', label: 'in flight', tone: 'accent' },
+  { key: 'done', label: 'done', tone: 'ok' },
+  { key: 'dead', label: 'dead-letter', tone: 'magenta' },
+  { key: 'throughput', label: 'throughput / tick' },
+];
+
+function MetricTiles({ metrics }: { metrics: Metrics }) {
+  return (
+    <dl className="tp__metrics" aria-label="live metrics">
+      {METRIC_TILES.map((tile) => (
+        <div
+          key={tile.key}
+          className={`tp__metric ${tile.tone ? `tp__metric--${tile.tone}` : ''}`}
+        >
+          <dt className="tp__metric-name">{tile.label}</dt>
+          <dd className="tp__metric-val">{metrics[tile.key]}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+// Compact dual-series trend: queue depth and throughput across recent ticks.
+function Trend({ trend }: { trend: TrendPoint[] }) {
+  const points = trend.slice(-40);
+  const maxDepth = Math.max(1, ...points.map((p) => p.queueDepth));
+  const maxThru = Math.max(1, ...points.map((p) => p.throughput));
+  const w = 100;
+  const h = 36;
+  const path = (key: 'queueDepth' | 'throughput', max: number): string => {
+    if (points.length === 0) return '';
+    return points
+      .map((p, i) => {
+        const x = points.length === 1 ? 0 : (i / (points.length - 1)) * w;
+        const y = h - (p[key] / max) * h;
+        return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`;
+      })
+      .join(' ');
+  };
+  return (
+    <div className="tp__trend glass" aria-label="queue depth and throughput trend">
+      <div className="tp__trend-head">
+        <span className="tp__col-name">Trend over ticks</span>
+        <span className="tp__trend-legend">
+          <span className="tp__trend-key tp__trend-key--depth">queue depth</span>
+          <span className="tp__trend-key tp__trend-key--thru">throughput</span>
+        </span>
+      </div>
+      <svg
+        className="tp__trend-svg"
+        viewBox={`0 0 ${w} ${h}`}
+        preserveAspectRatio="none"
+        role="img"
+        aria-label={`queue depth peaks at ${maxDepth}, throughput peaks at ${maxThru}`}
+      >
+        <path className="tp__trend-line tp__trend-line--depth" d={path('queueDepth', maxDepth)} />
+        <path className="tp__trend-line tp__trend-line--thru" d={path('throughput', maxThru)} />
+      </svg>
+    </div>
+  );
+}
+
+function DeadLetter({ jobs }: { jobs: Job[] }) {
+  const dead = jobs.filter((j) => j.status === 'dead');
+  return (
+    <div className="tp__dlq glass" aria-label="dead-letter queue">
+      <div className="tp__workers-head">
+        <span className="tp__col-name">Dead-letter queue</span>
+        <span className="tp__col-count">{dead.length}</span>
+      </div>
+      {dead.length === 0 ? (
+        <p className="tp__dlq-empty">No jobs have exhausted their retries.</p>
+      ) : (
+        <ul className="tp__dlq-list">
+          {dead.map((j) => (
+            <li key={j.id} className="tp__dlq-item">
+              <span className="tp-chip__id">{j.id}</span>
+              <span className="tp-chip__meta">{j.attempts} attempts, exhausted</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function RunControls() {
+  return (
+    <div className="tp__run" role="group" aria-label="run controls">
+      <button className="tp__btn tp__btn--primary" onClick={() => step()}>
+        Tick
+      </button>
+      <button className="tp__btn" onClick={() => runTicks(5)}>
+        Run 5
+      </button>
+      <button className="tp__btn" onClick={() => runTicks(20)}>
+        Run 20
+      </button>
+      <button className="tp__btn" onClick={() => enqueue(4)}>
+        Enqueue 4
+      </button>
+      <button className="tp__btn tp__btn--ghost" onClick={() => reset()}>
+        Reset
+      </button>
+    </div>
+  );
+}
+
 function JobChip({ job }: { job: Job }) {
   return (
     <li className={`tp-chip tp-chip--${job.status}`}>
@@ -104,7 +226,8 @@ function JobChip({ job }: { job: Job }) {
 
 export default function TaskProcessorDemo() {
   const sim = useSim();
-  const queueDepth = sim.jobs.filter((j) => j.status === 'queued').length;
+  const metrics = selectMetrics(sim);
+  const queueDepth = metrics.queued;
 
   return (
     <section className="tp" aria-label="task-processor queue and worker simulator">
@@ -125,7 +248,13 @@ export default function TaskProcessorDemo() {
         <span className="tp__depth-sub">tick {sim.tick}</span>
       </div>
 
+      <RunControls />
+
+      <MetricTiles metrics={metrics} />
+
       <Controls sim={sim} />
+
+      <Trend trend={sim.trend} />
 
       <div className="tp__workers glass" aria-label="worker pool">
         <div className="tp__workers-head">
@@ -162,6 +291,8 @@ export default function TaskProcessorDemo() {
           );
         })}
       </div>
+
+      <DeadLetter jobs={sim.jobs} />
     </section>
   );
 }
