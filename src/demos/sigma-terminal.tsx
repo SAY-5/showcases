@@ -6,6 +6,7 @@ import { useStore } from './sigma-terminal/state';
 import {
   addAlert,
   addTicker,
+  clearTriggered,
   quoteFor,
   removeAlert,
   removeTicker,
@@ -404,6 +405,36 @@ export default function SigmaTerminalDemo() {
           </section>
         )}
       </div>
+
+      {state.triggered.length > 0 ? (
+        <section
+          className="st__triggered glass"
+          aria-label="Triggered alerts"
+          aria-live="polite"
+        >
+          <div className="st__detail-head">
+            <h3 className="st__panel-title">
+              Triggered on last advance ({state.triggered.length})
+            </h3>
+            <button
+              type="button"
+              className="st__remove"
+              onClick={clearTriggered}
+            >
+              Dismiss
+            </button>
+          </div>
+          <ul className="st__triggered-list">
+            {state.triggered.map((t) => (
+              <li className="st__triggered-item" key={t.alert.id}>
+                <span className="st__dot" aria-hidden="true" />
+                {t.alert.ticker} {t.alert.direction === 'above' ? '>=' : '<='}{' '}
+                {t.alert.threshold.toFixed(2)} hit at {t.price.toFixed(2)}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </div>
   );
 }
