@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import '../styles/demo.css';
 import './api-platform.css';
@@ -10,9 +10,26 @@ import {
   removeKey,
   removeRoute,
   resetAll,
+  sendRequest,
   setKeyActive,
   updateRoute,
 } from './api-platform/store';
+import { matchRoute } from './api-platform/engine';
+import type { Decision, Status } from './api-platform/types';
+
+const STATUS_LABEL: Record<Status, string> = {
+  200: '200 Routed',
+  401: '401 Unauthorized',
+  403: '403 Forbidden',
+  429: '429 Too Many Requests',
+};
+
+const STATUS_TONE: Record<Status, string> = {
+  200: 'ok',
+  401: 'warn',
+  403: 'deny',
+  429: 'rate',
+};
 
 // In-browser API gateway configurator and request simulator. Define routes
 // (path prefix to upstream, auth requirement, per-key rate limit) and API keys,
@@ -25,6 +42,11 @@ import {
 export default function ApiPlatformDemo() {
   const reduce = useReducedMotion();
   const { routes, keys, window: clock } = useGateway();
+
+  // ---- request composer state ----
+  const [path, setPath] = useState('/v1/users/42');
+  const [reqKey, setReqKey] = useState<string>('k-live');
+  const [lastDecision, setLastDecision] = useState<Decision | null>(null);
 
   // ---- new-route form state ----
   const [nrPrefix, setNrPrefix] = useState('');
@@ -55,6 +77,16 @@ export default function ApiPlatformDemo() {
     if (!nkLabel.trim()) return;
     addKey(nkLabel);
     setNkLabel('');
+  }
+
+  // A live preview of which route the composed path would hit, shown next to
+  // the composer so the user sees the longest-prefix match before sending.
+  const preview = useMemo(() => matchRoute(routes, path.trim() || '/'), [routes, path]);
+
+  function onSend() {
+    const trimmed = path.trim() || '/';
+    const keyId = reqKey === '' ? null : reqKey;
+    setLastDecision(sendRequest(trimmed, keyId));
   }
 
   return (
@@ -241,6 +273,82 @@ export default function ApiPlatformDemo() {
               Add key
             </button>
           </form>
+        </section>
+
+        {/* ---------- simulator ---------- */}
+        <section className="ap__panel glass ap__panel--wide" aria-labelledby="ap-sim-h">
+          <h3 id="ap-sim-h" className="ap__panel-title">
+            Request simulator
+          </h3>
+          <div className="ap__composer">
+            <div className="ap__field ap__field--grow">
+              <label htmlFor="sim-path">Request path</label>
+              <input
+                id="sim-path"
+                className="ap__input mono"
+                value={path}
+                onChange={(e) => setPath(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') onSend();
+                }}
+              />
+            </div>
+            <div className="ap__field">
+              <label htmlFor="sim-key">Present key</label>
+              <select
+                id="sim-key"
+                className="ap__input mono"
+                value={reqKey}
+                onChange={(e) => setReqKey(e.target.value)}
+              >
+                <option value="">(no key)</option>
+                {keys.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.label}
+                    {k.active ? '' : ' (inactive)'}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button type="button" className="ap__btn ap__btn--send" onClick={onSend}>
+              Send
+            </button>
+          </div>
+
+          <p className="ap__match" aria-live="polite">
+            {preview.route ? (
+              <>
+                Matches <span className="mono">{preview.route.prefix}</span> to{' '}
+                <span className="mono ap__dim">{preview.route.upstream}</span>
+                {preview.candidates.length > 1 && (
+                  <span className="ap__faint">
+                    {' '}
+                    (over {preview.candidates.length - 1} shorter prefix
+                    {preview.candidates.length - 1 > 1 ? 'es' : ''})
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="ap__faint">No route covers this path.</span>
+            )}
+          </p>
+
+          {lastDecision && (
+            <div
+              className="ap__decision"
+              data-tone={STATUS_TONE[lastDecision.status]}
+              role="status"
+              aria-live="polite"
+            >
+              <span className="ap__decision-code mono">{STATUS_LABEL[lastDecision.status]}</span>
+              <span className="ap__decision-reason">{lastDecision.reason}</span>
+              {lastDecision.match.route && (
+                <span className="ap__decision-route mono ap__faint">
+                  route {lastDecision.match.route.prefix}
+                </span>
+              )}
+            </div>
+          )}
         </section>
       </div>
     </div>
