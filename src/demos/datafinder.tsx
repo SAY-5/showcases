@@ -1,8 +1,15 @@
+import { useState } from 'react';
 import '../styles/demo.css';
 import './datafinder.css';
-import { money } from './datafinder/data';
+import { findRecord, money } from './datafinder/data';
 import {
+  closeRecord,
   currentResult,
+  deleteView,
+  loadView,
+  openRecord,
+  resetAll,
+  saveView,
   setMaxPrice,
   setMinPrice,
   setMinRating,
@@ -57,8 +64,19 @@ function FacetRow({
 // external store; this component only reads a snapshot and dispatches actions.
 
 export default function DatafinderDemo() {
-  const { query } = useStore();
+  const { query, views, openId } = useStore();
   const result = currentResult();
+  const [viewName, setViewName] = useState('');
+  const open = openId ? findRecord(openId) : undefined;
+
+  function onSave() {
+    const name = viewName.trim();
+    if (!name) return;
+    // Read the clock once here, at the action, so render stays pure and
+    // deterministic; the store records it on the saved view.
+    saveView(name, Date.now());
+    setViewName('');
+  }
 
   return (
     <div className="demo" aria-label="datafinder faceted catalog explorer">
@@ -217,6 +235,14 @@ export default function DatafinderDemo() {
                       </span>
                     ))}
                   </div>
+                  <button
+                    type="button"
+                    className="dfx__card-open"
+                    onClick={() => openRecord(hit.record.id)}
+                    aria-haspopup="dialog"
+                  >
+                    View details
+                  </button>
                 </li>
               ))}
             </ul>
@@ -245,8 +271,123 @@ export default function DatafinderDemo() {
               </button>
             </nav>
           )}
+
+          <section className="dfx__views glass" aria-label="saved views">
+            <h4 className="dfx__views-title">Saved views</h4>
+            <div className="dfx__save">
+              <label className="dfx__save-field">
+                <span className="dfx__visually-hidden">Name this view</span>
+                <input
+                  type="text"
+                  className="dfx__save-input"
+                  placeholder="Name this filter set"
+                  value={viewName}
+                  maxLength={40}
+                  onChange={(e) => setViewName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') onSave();
+                  }}
+                  aria-label="Name this view"
+                />
+              </label>
+              <button
+                type="button"
+                className="demo__btn"
+                onClick={onSave}
+                disabled={viewName.trim().length === 0}
+              >
+                Save view
+              </button>
+              <button
+                type="button"
+                className="demo__btn demo__btn--ghost"
+                onClick={resetAll}
+              >
+                Reset all
+              </button>
+            </div>
+            {views.length === 0 ? (
+              <p className="dfx__views-empty">
+                No saved views yet. Filter the catalog, then save the current
+                set to recall it later.
+              </p>
+            ) : (
+              <ul className="dfx__views-list">
+                {views.map((v) => (
+                  <li key={v.id} className="dfx__view">
+                    <button
+                      type="button"
+                      className="dfx__view-load"
+                      onClick={() => loadView(v.id)}
+                    >
+                      {v.name}
+                    </button>
+                    <button
+                      type="button"
+                      className="dfx__view-del"
+                      onClick={() => deleteView(v.id)}
+                      aria-label={`Delete view ${v.name}`}
+                    >
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         </section>
       </div>
+
+      {open && (
+        <div
+          className="dfx__detail-backdrop"
+          role="presentation"
+          onClick={closeRecord}
+        >
+          <div
+            className="dfx__detail glass"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${open.name} details`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="dfx__detail-head">
+              <h4 className="dfx__detail-name">{open.name}</h4>
+              <button
+                type="button"
+                className="dfx__detail-close"
+                onClick={closeRecord}
+                aria-label="Close details"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="dfx__detail-blurb">{open.blurb}</p>
+            <dl className="dfx__detail-grid">
+              <div className="dfx__detail-row">
+                <dt>Category</dt>
+                <dd>{open.category}</dd>
+              </div>
+              <div className="dfx__detail-row">
+                <dt>Price</dt>
+                <dd>{money(open.price)}</dd>
+              </div>
+              <div className="dfx__detail-row">
+                <dt>Rating</dt>
+                <dd>{open.rating.toFixed(1)} / 5</dd>
+              </div>
+              <div className="dfx__detail-row">
+                <dt>Year</dt>
+                <dd>{open.year}</dd>
+              </div>
+              <div className="dfx__detail-row">
+                <dt>Tags</dt>
+                <dd>{open.tags.join(', ')}</dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
