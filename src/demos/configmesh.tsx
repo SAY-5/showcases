@@ -538,7 +538,7 @@ function ValidationPanel() {
         <h4 id="cm-val-h" className="cm-panel__title">
           Validation
         </h4>
-        <span className="cm-panel__meta">
+        <span className="cm-panel__meta" aria-live="polite">
           {total === 0 ? 'all valid' : `${total} issues`}
         </span>
       </div>
