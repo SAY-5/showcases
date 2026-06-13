@@ -1,8 +1,8 @@
 // Browser-side store for SkillMatch. Roles and people live in localStorage so
 // they survive a reload. A tiny external store exposes a consistent snapshot to
-// React via useSyncExternalStore, mirroring the shopflow pattern. All ids are
-// generated from a monotonic counter seeded off the existing data, so creation
-// stays deterministic within a session without reaching for randomness.
+// React via useSyncExternalStore, mirroring the shopflow pattern. New ids come
+// from a monotonic counter, so creation stays deterministic within a session
+// without reaching for randomness.
 
 import { clampLevel } from './engine';
 import {
