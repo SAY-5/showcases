@@ -191,6 +191,212 @@
   color: var(--text-strong);
 }
 
+/* ---------- stage layout ---------- */
+
+.hm__stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .hm__stage {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- service detail ---------- */
+
+.hm__detail {
+  border-radius: 14px;
+  padding: 16px;
+  position: sticky;
+  top: 12px;
+}
+
+.hm__detail-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hm__detail-name {
+  margin: 0;
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 15px;
+  color: var(--text-strong);
+}
+
+.hm__detail-meta {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text-faint);
+  margin: 6px 0 12px;
+}
+
+.hm__chart {
+  width: 100%;
+  height: 96px;
+  display: block;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.hm__chart-line {
+  stroke-width: 1.8;
+  vector-effect: non-scaling-stroke;
+}
+
+.hm__chart-line--up {
+  stroke: var(--accent);
+}
+.hm__chart-line--degraded {
+  stroke: var(--warn);
+}
+.hm__chart-line--down {
+  stroke: var(--magenta);
+}
+
+.hm__chart-area {
+  opacity: 0.18;
+}
+.hm__chart-area--up {
+  fill: var(--accent);
+}
+.hm__chart-area--degraded {
+  fill: var(--warn);
+}
+.hm__chart-area--down {
+  fill: var(--magenta);
+}
+
+.hm__detail-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.hm__detail-stats div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line-soft);
+}
+
+.hm__detail-stats dt {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.hm__detail-stats dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 16px;
+  color: var(--text-strong);
+}
+
+/* ---------- recent samples ---------- */
+
+.hm__samples {
+  margin: 12px 0;
+}
+
+.hm__sample-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.hm__sample {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  padding: 5px 9px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line-soft);
+  color: var(--text);
+}
+
+.hm__sample--err {
+  border-color: var(--magenta-glow);
+  background: var(--magenta-soft);
+}
+
+.hm__sample-flag {
+  color: var(--text-dim);
+}
+
+.hm__sample--err .hm__sample-flag {
+  color: var(--magenta);
+}
+
+/* ---------- threshold editor ---------- */
+
+.hm__thresholds {
+  margin: 12px 0 0;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.hm__thresholds legend {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 0 6px;
+}
+
+.hm__thresh-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 6px 0;
+}
+
+.hm__thresh-label {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.hm__thresh-unit {
+  color: var(--text-faint);
+}
+
+.hm__thresh-input {
+  width: 84px;
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  border: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text-strong);
+}
+
+.hm__thresh-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hm__card {
     transition: none;
