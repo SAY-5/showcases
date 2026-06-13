@@ -21,8 +21,10 @@ import {
 } from './configmesh/store';
 import {
   coerceValue,
+  diffEnvironments,
   formatValue,
   resolveEnvironment,
+  validateEnvironment,
 } from './configmesh/engine';
 import type { ConfigKey, ConfigType, ConfigValue } from './configmesh/types';
 
@@ -434,6 +436,158 @@ function EnvironmentPanel() {
   );
 }
 
+function DiffPanel() {
+  const doc = useConfigDoc();
+  const [fromId, setFromId] = useState(doc.environments[0]?.id ?? '');
+  const [toId, setToId] = useState(
+    doc.environments[1]?.id ?? doc.environments[0]?.id ?? '',
+  );
+
+  const fromEnv = doc.environments.find((e) => e.id === fromId);
+  const toEnv = doc.environments.find((e) => e.id === toId);
+  const entries =
+    fromEnv && toEnv ? diffEnvironments(doc, fromEnv.id, toEnv.id) : [];
+
+  return (
+    <section className="cm-panel glass" aria-labelledby="cm-diff-h">
+      <div className="cm-panel__head">
+        <h4 id="cm-diff-h" className="cm-panel__title">
+          Diff environments
+        </h4>
+        <span className="cm-panel__meta">{entries.length} differences</span>
+      </div>
+
+      <div className="cm-env-select">
+        <label>
+          from
+          <select
+            className="cm-input cm-input--sm"
+            value={fromId}
+            onChange={(e) => setFromId(e.target.value)}
+          >
+            {doc.environments.map((env) => (
+              <option key={env.id} value={env.id}>
+                {env.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <span className="cm-arrow" aria-hidden="true">
+          to
+        </span>
+        <label>
+          to
+          <select
+            className="cm-input cm-input--sm"
+            value={toId}
+            onChange={(e) => setToId(e.target.value)}
+          >
+            {doc.environments.map((env) => (
+              <option key={env.id} value={env.id}>
+                {env.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div role="list" aria-label="diff entries">
+        {entries.length === 0 ? (
+          <p className="cm-empty">
+            {fromId === toId
+              ? 'Pick two different environments to compare.'
+              : 'No differences in effective values.'}
+          </p>
+        ) : (
+          entries.map((entry) => (
+            <div className="cm-diff-row" role="listitem" key={entry.key}>
+              <span className={`cm-diff-tag cm-diff-tag--${entry.kind}`}>
+                {entry.kind}
+              </span>
+              <span className="cm-diff-key">{entry.key}</span>
+              {entry.kind === 'changed' ? (
+                <span className="cm-diff-val">
+                  {formatValue(entry.from)}{' '}
+                  <span className="cm-arrow" aria-hidden="true">
+                    to
+                  </span>{' '}
+                  {formatValue(entry.to)}
+                </span>
+              ) : (
+                <span className="cm-diff-val">{formatValue(entry.value)}</span>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
+function ValidationPanel() {
+  const doc = useConfigDoc();
+  const results = doc.environments.map((env) => ({
+    env,
+    issues: validateEnvironment(doc, env),
+  }));
+  const total = results.reduce((sum, r) => sum + r.issues.length, 0);
+
+  return (
+    <section className="cm-panel glass" aria-labelledby="cm-val-h">
+      <div className="cm-panel__head">
+        <h4 id="cm-val-h" className="cm-panel__title">
+          Validation
+        </h4>
+        <span className="cm-panel__meta">
+          {total === 0 ? 'all valid' : `${total} issues`}
+        </span>
+      </div>
+
+      {results.map(({ env, issues }) => (
+        <div key={env.id}>
+          <p className="cm-field__label">{env.name}</p>
+          {issues.length === 0 ? (
+            <p className="cm-ok-line">
+              <span aria-hidden="true">+</span> no missing required keys or type
+              errors
+            </p>
+          ) : (
+            <div role="list" aria-label={`issues for ${env.name}`}>
+              {issues.map((issue) => (
+                <div
+                  className="cm-issue"
+                  role="listitem"
+                  key={`${env.id}.${issue.key}.${issue.kind}`}
+                >
+                  {issue.kind === 'missing-required' ? (
+                    <>
+                      <span className="cm-issue__sev">missing</span>
+                      <span className="cm-issue__text">
+                        required key <span className="mono">{issue.key}</span> has
+                        no effective value
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="cm-issue__sev cm-issue__sev--type">
+                        type
+                      </span>
+                      <span className="cm-issue__text">
+                        <span className="mono">{issue.key}</span> expects{' '}
+                        {issue.expected} but holds a {issue.got}
+                      </span>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </section>
+  );
+}
+
 export default function ConfigmeshDemo() {
   const doc = useConfigDoc();
 
@@ -449,6 +603,10 @@ export default function ConfigmeshDemo() {
 
       <KeysPanel />
       <EnvironmentPanel />
+      <div className="cm-grid-2">
+        <DiffPanel />
+        <ValidationPanel />
+      </div>
 
       <div className="demo__controls">
         <button
