@@ -2,8 +2,14 @@ import { useMemo, useState } from 'react';
 import '../styles/demo.css';
 import './routeengine.css';
 import { useStore } from './routeengine/state';
-import { addStop, moveDepot } from './routeengine/store';
-import { DEPOT_ID, GRID_MAX, type Route, type Stop } from './routeengine/types';
+import {
+  addStop,
+  moveDepot,
+  optimize,
+  removeStop,
+  showNaive,
+} from './routeengine/store';
+import { DEPOT_ID, GRID_MAX, GRID_MIN, type Route, type Stop } from './routeengine/types';
 
 // In-browser delivery route planner. A depot and a set of stops live on a
 // 0..100 grid in localStorage. The safe engine builds a Euclidean distance
@@ -38,9 +44,21 @@ function polylinePoints(
 }
 
 export default function RouteengineDemo() {
-  const { depot, stops, route } = useStore();
+  const { depot, stops, route, optimized } = useStore();
   // Click mode: dropping a new stop or moving the depot.
   const [mode, setMode] = useState<'stop' | 'depot'>('stop');
+  // Manual add-stop form fields.
+  const [form, setForm] = useState({ label: '', x: '', y: '' });
+
+  // Add a stop from the typed coordinates, clamping into the grid.
+  function handleAdd(event: React.FormEvent) {
+    event.preventDefault();
+    const x = Number(form.x);
+    const y = Number(form.y);
+    if (Number.isNaN(x) || Number.isNaN(y)) return;
+    addStop(x, y, form.label);
+    setForm({ label: '', x: '', y: '' });
+  }
 
   const points = useMemo(
     () => polylinePoints(route, depot, stops),
@@ -66,6 +84,19 @@ export default function RouteengineDemo() {
     }
     return map;
   }, [route.order]);
+
+  // Stops sorted into the current visit order for the list panel.
+  const orderedStops = useMemo(() => {
+    const byId = new Map(stops.map((s) => [s.id, s]));
+    const out: { stop: Stop; n: number }[] = [];
+    let n = 0;
+    for (const id of route.order) {
+      if (id === DEPOT_ID) continue;
+      const stop = byId.get(id);
+      if (stop) out.push({ stop, n: ++n });
+    }
+    return out;
+  }, [route.order, stops]);
 
   return (
     <section className="re" aria-label="Delivery route planner">
@@ -142,6 +173,93 @@ export default function RouteengineDemo() {
           <p className="re__hint" aria-live="polite">
             Click the map to {mode === 'depot' ? 'move the depot' : 'add a stop'}.
           </p>
+        </div>
+
+        <div className="re__panel glass">
+          <div className="re__actions">
+            <button
+              type="button"
+              className="re__btn re__btn--primary"
+              onClick={() => optimize()}
+              disabled={stops.length < 2}
+            >
+              Optimize route
+            </button>
+            <button
+              type="button"
+              className="re__btn"
+              onClick={() => showNaive()}
+              aria-pressed={!optimized}
+            >
+              Naive order
+            </button>
+          </div>
+
+          <form className="re__add" onSubmit={handleAdd} aria-label="Add a stop by coordinates">
+            <label className="re__field">
+              Label
+              <input
+                className="re__input"
+                type="text"
+                value={form.label}
+                placeholder="Stop"
+                onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
+              />
+            </label>
+            <label className="re__field">
+              X
+              <input
+                className="re__input"
+                type="number"
+                min={GRID_MIN}
+                max={GRID_MAX}
+                value={form.x}
+                required
+                onChange={(e) => setForm((f) => ({ ...f, x: e.target.value }))}
+              />
+            </label>
+            <label className="re__field">
+              Y
+              <input
+                className="re__input"
+                type="number"
+                min={GRID_MIN}
+                max={GRID_MAX}
+                value={form.y}
+                required
+                onChange={(e) => setForm((f) => ({ ...f, y: e.target.value }))}
+              />
+            </label>
+            <button type="submit" className="re__btn">
+              Add
+            </button>
+          </form>
+
+          {stops.length === 0 ? (
+            <p className="re__empty">No stops yet. Click the map or add coordinates.</p>
+          ) : (
+            <ul className="re__list" aria-label="Delivery stops in visit order">
+              {orderedStops.map(({ stop, n }) => (
+                <li key={stop.id} className="re__row">
+                  <span className="re__rownum" aria-hidden="true">
+                    {n}
+                  </span>
+                  <span className="re__rowlabel">{stop.label}</span>
+                  <span className="re__rowcoord">
+                    {stop.x}, {stop.y}
+                  </span>
+                  <button
+                    type="button"
+                    className="re__remove"
+                    aria-label={`Remove ${stop.label}`}
+                    onClick={() => removeStop(stop.id)}
+                  >
+                    &times;
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </section>

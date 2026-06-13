@@ -148,7 +148,7 @@ export function optimize(): void {
 }
 
 // Drop back to the depot-then-stops-in-order baseline.
-export function useNaive(): void {
+export function showNaive(): void {
   recompute(state.depot, state.stops, false);
 }
 
