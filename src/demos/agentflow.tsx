@@ -6,7 +6,9 @@ import {
   addStep,
   moveStep,
   removeStep,
+  resetAll,
   run,
+  setSeed,
   updateStep,
 } from './agentflow/store';
 import type { Attempt } from './agentflow/types';
@@ -31,6 +33,7 @@ export default function AgentflowDemo() {
   const [clock] = useState(() => Date.now());
   const { steps, seed } = state.workflow;
   const last = state.last;
+  const history = state.history;
 
   return (
     <div className="demo">
@@ -175,11 +178,29 @@ export default function AgentflowDemo() {
         >
           Run pipeline
         </button>
+        <label className="af__seed">
+          <span className="af__lbl">Seed</span>
+          <input
+            className="af__input af__input--num af__seed-input"
+            type="number"
+            min={0}
+            max={999999}
+            value={seed}
+            aria-label="Run seed"
+            onChange={(e) => setSeed(Number(e.target.value))}
+          />
+        </label>
+        <button
+          type="button"
+          className="demo__btn demo__btn--ghost"
+          onClick={() => resetAll()}
+        >
+          Reset
+        </button>
         <span className="demo__hint">
-          seed <b className="af__seed-val">{seed}</b>
           {last
-            ? ` · last run ${last.status} · ${last.totalMs} ms simulated`
-            : ' · not run yet'}
+            ? `last run ${last.status} · ${last.totalMs} ms simulated`
+            : 'not run yet · change the seed to flake different steps'}
         </span>
       </div>
 
@@ -236,6 +257,38 @@ export default function AgentflowDemo() {
                   last.failedStepId
                 }" after exhausting its retries. ${last.attempts.length} attempts, ${last.totalMs} ms simulated.`}
           </p>
+        )}
+      </section>
+
+      <section className="af__history glass" aria-labelledby="af-history-h">
+        <header className="af__trace-head">
+          <h3 id="af-history-h" className="af__h">
+            Run history
+          </h3>
+          <span className="af__hist-count">{history.length}</span>
+        </header>
+        {history.length === 0 ? (
+          <p className="af__trace-empty">No runs yet.</p>
+        ) : (
+          <ul className="af__hist-list">
+            {history.map((r) => (
+              <li
+                key={r.id}
+                className={`af__hist-row af__hist-row--${r.status}`}
+              >
+                <span
+                  className={`af__hist-badge af__hist-badge--${r.status}`}
+                >
+                  {r.status}
+                </span>
+                <span className="af__hist-meta">seed {r.seed}</span>
+                <span className="af__hist-meta">
+                  {r.stepCount} steps · {r.attemptCount} attempts
+                </span>
+                <span className="af__hist-dur">{r.totalMs} ms</span>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
     </div>
