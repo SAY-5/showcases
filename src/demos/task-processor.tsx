@@ -112,7 +112,7 @@ const METRIC_TILES: { key: keyof Metrics; label: string; tone?: string }[] = [
 
 function MetricTiles({ metrics }: { metrics: Metrics }) {
   return (
-    <dl className="tp__metrics" aria-label="live metrics">
+    <dl className="tp__metrics" aria-label="live metrics" aria-live="polite">
       {METRIC_TILES.map((tile) => (
         <div
           key={tile.key}
@@ -146,7 +146,7 @@ function Trend({ trend }: { trend: TrendPoint[] }) {
   return (
     <div className="tp__trend glass" aria-label="queue depth and throughput trend">
       <div className="tp__trend-head">
-        <span className="tp__col-name">Trend over ticks</span>
+        <h4 className="tp__col-name">Trend over ticks</h4>
         <span className="tp__trend-legend">
           <span className="tp__trend-key tp__trend-key--depth">queue depth</span>
           <span className="tp__trend-key tp__trend-key--thru">throughput</span>
@@ -171,7 +171,7 @@ function DeadLetter({ jobs }: { jobs: Job[] }) {
   return (
     <div className="tp__dlq glass" aria-label="dead-letter queue">
       <div className="tp__workers-head">
-        <span className="tp__col-name">Dead-letter queue</span>
+        <h4 className="tp__col-name">Dead-letter queue</h4>
         <span className="tp__col-count">{dead.length}</span>
       </div>
       {dead.length === 0 ? (
@@ -258,7 +258,7 @@ export default function TaskProcessorDemo() {
 
       <div className="tp__workers glass" aria-label="worker pool">
         <div className="tp__workers-head">
-          <span className="tp__col-name">Worker pool</span>
+          <h4 className="tp__col-name">Worker pool</h4>
           <span className="tp__col-count">{sim.workers.length}</span>
         </div>
         <ul className="tp__workers-list">
