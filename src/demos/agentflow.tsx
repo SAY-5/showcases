@@ -6,8 +6,17 @@ import {
   addStep,
   moveStep,
   removeStep,
+  run,
   updateStep,
 } from './agentflow/store';
+import type { Attempt } from './agentflow/types';
+
+// Human label for an attempt outcome, shown on each trace row badge.
+const OUTCOME_LABEL: Record<Attempt['outcome'], string> = {
+  ok: 'ok',
+  retry: 'retry',
+  failed: 'failed',
+};
 
 // AgentFlow runs an ordered task pipeline in the browser. Each step is a plain
 // unit of work (fetch, transform, validate, publish and the like) with a
@@ -20,7 +29,8 @@ export default function AgentflowDemo() {
   // Snapshot the wall clock once, in render state, so handlers can mint ids
   // without reading the clock during a pure render.
   const [clock] = useState(() => Date.now());
-  const { steps } = state.workflow;
+  const { steps, seed } = state.workflow;
+  const last = state.last;
 
   return (
     <div className="demo">
@@ -155,6 +165,78 @@ export default function AgentflowDemo() {
             </li>
           ))}
         </ol>
+      </section>
+
+      <div className="demo__controls af__controls">
+        <button
+          type="button"
+          className="demo__btn"
+          onClick={() => run(clock)}
+        >
+          Run pipeline
+        </button>
+        <span className="demo__hint">
+          seed <b className="af__seed-val">{seed}</b>
+          {last
+            ? ` · last run ${last.status} · ${last.totalMs} ms simulated`
+            : ' · not run yet'}
+        </span>
+      </div>
+
+      <section className="af__trace glass" aria-labelledby="af-trace-h">
+        <header className="af__trace-head">
+          <h3 id="af-trace-h" className="af__h">
+            Trace
+          </h3>
+          {last && (
+            <span
+              className={`af__verdict-pill af__verdict-pill--${last.status}`}
+            >
+              run {last.status}
+            </span>
+          )}
+        </header>
+
+        {!last ? (
+          <p className="af__trace-empty">
+            Run the pipeline to see every attempt, retry, and backoff.
+          </p>
+        ) : (
+          <ol className="af__attempts">
+            {last.attempts.map((a, idx) => (
+              <li
+                key={`${a.stepId}-${a.attempt}-${idx}`}
+                className={`af__attempt af__attempt--${a.outcome}`}
+              >
+                <span className="af__attempt-step">{a.stepName}</span>
+                <span className="af__attempt-no">try {a.attempt}</span>
+                <span className="af__attempt-dur">{a.durationMs} ms</span>
+                <span className="af__attempt-back">
+                  {a.backoffMs > 0 ? `backoff ${a.backoffMs} ms` : '—'}
+                </span>
+                <span
+                  className={`af__attempt-badge af__attempt-badge--${a.outcome}`}
+                >
+                  {OUTCOME_LABEL[a.outcome]}
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
+
+        {last && (
+          <p
+            className={`af__result af__result--${last.status}`}
+            role="status"
+          >
+            {last.status === 'ok'
+              ? `All ${steps.length} steps completed in ${last.totalMs} ms of simulated work across ${last.attempts.length} attempts.`
+              : `Run failed at step "${
+                  steps.find((s) => s.id === last.failedStepId)?.name ??
+                  last.failedStepId
+                }" after exhausting its retries. ${last.attempts.length} attempts, ${last.totalMs} ms simulated.`}
+          </p>
+        )}
       </section>
     </div>
   );
