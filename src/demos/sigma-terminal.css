@@ -164,6 +164,14 @@
   font-size: 14px;
 }
 
+@media (max-width: 520px) {
+  .st__table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+
 .st__caption {
   text-align: left;
   font-size: 12px;
@@ -448,7 +456,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .st__btn {
+  .st__btn,
+  .st__symbtn,
+  .st__remove {
     transition: none;
   }
 }
