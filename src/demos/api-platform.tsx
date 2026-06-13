@@ -41,7 +41,7 @@ const STATUS_TONE: Record<Status, string> = {
 
 export default function ApiPlatformDemo() {
   const reduce = useReducedMotion();
-  const { routes, keys, window: clock } = useGateway();
+  const { routes, keys, log, window: clock } = useGateway();
 
   // ---- request composer state ----
   const [path, setPath] = useState('/v1/users/42');
@@ -350,7 +350,92 @@ export default function ApiPlatformDemo() {
             </div>
           )}
         </section>
+
+        {/* ---------- traffic ---------- */}
+        <section className="ap__panel glass ap__panel--wide" aria-labelledby="ap-traffic-h">
+          <h3 id="ap-traffic-h" className="ap__panel-title">
+            Traffic
+          </h3>
+
+          <UsageMeters />
+
+          <ol className="ap__log" aria-label="Request log">
+            {log.map((entry) => (
+              <li key={entry.id} className="ap__log-row" data-tone={STATUS_TONE[entry.status]}>
+                <span className="ap__log-status mono">{entry.status}</span>
+                <span className="ap__log-path mono">{entry.path}</span>
+                <span className="ap__log-key mono ap__faint">
+                  {entry.keyId ? keyLabel(keys, entry.keyId) : 'anon'}
+                </span>
+                <span className="ap__log-reason">{entry.reason}</span>
+                <span className="ap__log-win mono ap__faint">w{entry.window}</span>
+              </li>
+            ))}
+            {log.length === 0 && <li className="ap__empty">No requests sent yet.</li>}
+          </ol>
+        </section>
       </div>
     </div>
+  );
+}
+
+function keyLabel(keys: { id: string; label: string }[], id: string): string {
+  return keys.find((k) => k.id === id)?.label ?? id;
+}
+
+// Per key+route rate-limit usage in the current window. Reads counts from the
+// live snapshot so the bars fill as requests are admitted and empty when the
+// window advances.
+function UsageMeters() {
+  const { routes, keys, counts, window: clock } = useGateway();
+
+  const rows = useMemo(() => {
+    const out: { keyId: string; label: string; prefix: string; used: number; limit: number }[] = [];
+    for (const k of keys) {
+      for (const r of routes) {
+        if (r.rateLimit <= 0) continue;
+        const used = counts[`${k.id}::${r.id}::${clock}`] ?? 0;
+        if (used === 0) continue;
+        out.push({ keyId: k.id, label: k.label, prefix: r.prefix, used, limit: r.rateLimit });
+      }
+    }
+    return out;
+  }, [routes, keys, counts, clock]);
+
+  if (rows.length === 0) {
+    return (
+      <p className="ap__faint ap__meters-empty">
+        No metered usage in window #{clock}. Send keyed requests to a rate-limited route.
+      </p>
+    );
+  }
+
+  return (
+    <ul className="ap__meters" aria-label="Rate limit usage in current window">
+      {rows.map((row) => {
+        const pct = Math.min(100, Math.round((row.used / row.limit) * 100));
+        const full = row.used >= row.limit;
+        return (
+          <li key={`${row.keyId}-${row.prefix}`} className="ap__meter">
+            <span className="ap__meter-label mono">
+              {row.label} {row.prefix}
+            </span>
+            <span
+              className="ap__meter-bar"
+              role="progressbar"
+              aria-valuenow={row.used}
+              aria-valuemin={0}
+              aria-valuemax={row.limit}
+              aria-label={`${row.label} on ${row.prefix}`}
+            >
+              <span className="ap__meter-fill" data-full={full} style={{ width: `${pct}%` }} />
+            </span>
+            <span className="ap__meter-num mono">
+              {row.used}/{row.limit}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
