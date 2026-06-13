@@ -1,5 +1,5 @@
 // The seeded in-memory dataset the QueryFlow engine queries. It is a single
-// orders table with typed columns, generated deterministically so the same
+// orders table with typed columns, built deterministically so the same
 // rows appear on every load (no Math.random, no clock). The generator is a
 // small linear-congruential sequence, which keeps the data varied but stable
 // for reproducible query results.
