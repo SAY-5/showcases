@@ -73,7 +73,7 @@ const SEED_SEQ = 1005;
 export type State = {
   accounts: Account[];
   entries: JournalEntry[];
-  // Monotonic counter behind generated entry ids. Persisted so ids stay unique
+  // Monotonic counter behind assigned entry ids. Persisted so ids stay unique
   // across reloads without depending on the clock.
   seq: number;
 };
