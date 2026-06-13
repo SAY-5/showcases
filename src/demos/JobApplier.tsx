@@ -2,10 +2,22 @@ import { useMemo, useState } from 'react';
 import '../styles/demo.css';
 import './JobApplier.css';
 import { useJobStore } from './JobApplier/state';
-import { addApplication, setToday } from './JobApplier/store';
 import {
+  addApplication,
+  advanceApplication,
+  deleteApplication,
+  rejectApplication,
+  setNextAction,
+  setStage,
+  setToday,
+  updateApplication,
+} from './JobApplier/store';
+import {
+  canAdvance,
+  canReject,
   filterAndSort,
   isOnOrBefore,
+  nextStageOf,
   type SortKey,
   type StageFilter,
 } from './JobApplier/engine';
@@ -28,6 +40,7 @@ const fmtSalary = (s: number | null): string =>
 export default function JobApplierDemo() {
   const { applications, today } = useJobStore();
   const [view, setView] = useState<View>('board');
+  const [openId, setOpenId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [stageFilter, setStageFilter] = useState<StageFilter>('all');
   const [sort, setSort] = useState<SortKey>('nextAction');
@@ -36,6 +49,10 @@ export default function JobApplierDemo() {
     () => filterAndSort(applications, { stage: stageFilter, query, sort }),
     [applications, stageFilter, query, sort],
   );
+
+  const open = openId
+    ? applications.find((a) => a.id === openId) ?? null
+    : null;
 
   return (
     <div className="demo" aria-label="JobApplier job application tracker">
@@ -75,7 +92,7 @@ export default function JobApplierDemo() {
       </div>
 
       {view === 'board' ? (
-        <Board applications={applications} today={today} />
+        <Board applications={applications} today={today} onOpen={setOpenId} />
       ) : (
         <ListView
           rows={filtered}
@@ -86,10 +103,15 @@ export default function JobApplierDemo() {
           onQuery={setQuery}
           onStageFilter={setStageFilter}
           onSort={setSort}
+          onOpen={setOpenId}
         />
       )}
 
       <AddForm />
+
+      {open && (
+        <Detail app={open} onClose={() => setOpenId(null)} />
+      )}
     </div>
   );
 }
@@ -99,9 +121,11 @@ export default function JobApplierDemo() {
 function Board({
   applications,
   today,
+  onOpen,
 }: {
   applications: Application[];
   today: string;
+  onOpen: (id: string) => void;
 }) {
   return (
     <div className="ja__board" role="list" aria-label="Pipeline board">
@@ -124,7 +148,7 @@ function Board({
               )}
               {cards.map((a) => (
                 <li key={a.id}>
-                  <Card app={a} today={today} />
+                  <Card app={a} today={today} onOpen={onOpen} />
                 </li>
               ))}
             </ul>
@@ -135,11 +159,24 @@ function Board({
   );
 }
 
-function Card({ app, today }: { app: Application; today: string }) {
+function Card({
+  app,
+  today,
+  onOpen,
+}: {
+  app: Application;
+  today: string;
+  onOpen: (id: string) => void;
+}) {
   const overdue =
     app.stage !== 'rejected' && isOnOrBefore(app.nextActionDate, today);
   return (
-    <article className="ja__card" aria-label={`${app.company}, ${app.role}`}>
+    <button
+      type="button"
+      className="ja__card"
+      onClick={() => onOpen(app.id)}
+      aria-label={`Open ${app.company}, ${app.role}`}
+    >
       <span className="ja__card-co">{app.company}</span>
       <span className="ja__card-role">{app.role}</span>
       <span className="ja__card-meta">
@@ -151,7 +188,7 @@ function Card({ app, today }: { app: Application; today: string }) {
           </span>
         )}
       </span>
-    </article>
+    </button>
   );
 }
 
@@ -166,6 +203,7 @@ function ListView({
   onQuery,
   onStageFilter,
   onSort,
+  onOpen,
 }: {
   rows: Application[];
   today: string;
@@ -175,6 +213,7 @@ function ListView({
   onQuery: (v: string) => void;
   onStageFilter: (v: StageFilter) => void;
   onSort: (v: SortKey) => void;
+  onOpen: (id: string) => void;
 }) {
   return (
     <div className="ja__list-wrap">
@@ -245,7 +284,13 @@ function ListView({
             return (
               <tr key={a.id}>
                 <th scope="row" className="ja__th-row">
-                  {a.company}
+                  <button
+                    type="button"
+                    className="ja__rowbtn"
+                    onClick={() => onOpen(a.id)}
+                  >
+                    {a.company}
+                  </button>
                 </th>
                 <td>{a.role}</td>
                 <td>
@@ -262,6 +307,143 @@ function ListView({
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// ---------- detail ----------
+
+function Detail({
+  app,
+  onClose,
+}: {
+  app: Application;
+  onClose: () => void;
+}) {
+  const next = nextStageOf(app.stage);
+  return (
+    <div
+      className="ja__detail glass"
+      role="region"
+      aria-label={`${app.company} application detail`}
+    >
+      <header className="ja__detail-head">
+        <div className="ja__detail-id">
+          <input
+            className="ja__detail-co"
+            value={app.company}
+            onChange={(e) => updateApplication(app.id, { company: e.target.value })}
+            aria-label="Company"
+          />
+          <input
+            className="ja__detail-role"
+            value={app.role}
+            onChange={(e) => updateApplication(app.id, { role: e.target.value })}
+            aria-label="Role"
+          />
+        </div>
+        <button
+          type="button"
+          className="ja__close"
+          onClick={onClose}
+          aria-label="Close detail"
+        >
+          Close
+        </button>
+      </header>
+
+      <div className="ja__detail-grid">
+        <label className="ja__field">
+          <span className="ja__field-label">Stage</span>
+          <select
+            className="ja__select"
+            value={app.stage}
+            onChange={(e) => setStage(app.id, e.target.value as Stage)}
+          >
+            {STAGES.map((s) => (
+              <option key={s} value={s}>
+                {STAGE_LABEL[s]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="ja__field">
+          <span className="ja__field-label">Applied date</span>
+          <input
+            type="date"
+            className="ja__date"
+            value={app.appliedDate ?? ''}
+            onChange={(e) =>
+              updateApplication(app.id, { appliedDate: e.target.value || null })
+            }
+          />
+        </label>
+        <label className="ja__field">
+          <span className="ja__field-label">Next action</span>
+          <input
+            type="date"
+            className="ja__date"
+            value={app.nextActionDate ?? ''}
+            onChange={(e) => setNextAction(app.id, e.target.value || null)}
+          />
+        </label>
+        <label className="ja__field">
+          <span className="ja__field-label">Salary</span>
+          <input
+            type="number"
+            className="ja__input"
+            min={0}
+            step={1000}
+            value={app.salary ?? ''}
+            placeholder="Annual"
+            onChange={(e) => {
+              const raw = e.target.value;
+              updateApplication(app.id, {
+                salary: raw === '' ? null : Math.max(0, Math.floor(Number(raw))),
+              });
+            }}
+          />
+        </label>
+      </div>
+
+      <label className="ja__field ja__field--wide">
+        <span className="ja__field-label">Notes</span>
+        <textarea
+          className="ja__textarea"
+          rows={3}
+          value={app.notes}
+          onChange={(e) => updateApplication(app.id, { notes: e.target.value })}
+        />
+      </label>
+
+      <div className="demo__controls ja__detail-actions">
+        <button
+          type="button"
+          className="demo__btn"
+          disabled={!canAdvance(app)}
+          onClick={() => advanceApplication(app.id)}
+        >
+          {next ? `Advance to ${STAGE_LABEL[next]}` : 'No next stage'}
+        </button>
+        <button
+          type="button"
+          className="demo__btn demo__btn--ghost"
+          disabled={!canReject(app)}
+          onClick={() => rejectApplication(app.id)}
+        >
+          Mark rejected
+        </button>
+        <button
+          type="button"
+          className="demo__btn demo__btn--ghost"
+          onClick={() => {
+            deleteApplication(app.id);
+            onClose();
+          }}
+        >
+          Delete
+        </button>
+      </div>
     </div>
   );
 }

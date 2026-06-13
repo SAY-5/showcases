@@ -277,6 +277,88 @@
   background: var(--magenta-soft);
 }
 
+.ja__rowbtn {
+  font: inherit;
+  font-weight: 600;
+  color: var(--text-strong);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.ja__rowbtn:hover {
+  color: var(--accent);
+}
+
+/* ---------- detail ---------- */
+
+.ja__detail {
+  margin-top: 20px;
+  padding: 18px;
+  border-radius: 14px;
+}
+.ja__detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.ja__detail-id {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ja__detail-co,
+.ja__detail-role {
+  font-family: var(--sans);
+  color: var(--text-strong);
+  background: var(--ink-800);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 7px 11px;
+}
+.ja__detail-co {
+  font-size: 17px;
+  font-weight: 600;
+}
+.ja__detail-role {
+  font-size: 14px;
+  color: var(--text-dim);
+}
+.ja__detail-co:focus-visible,
+.ja__detail-role:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-color: var(--accent-line);
+}
+.ja__close {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  background: var(--ink-700);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 14px;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.ja__close:hover {
+  color: var(--text);
+  border-color: var(--accent-line);
+}
+.ja__detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.ja__detail-actions {
+  margin-top: 18px;
+}
+
 /* ---------- add form ---------- */
 
 .ja__add {
