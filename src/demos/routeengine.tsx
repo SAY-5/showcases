@@ -7,9 +7,16 @@ import {
   moveDepot,
   optimize,
   removeStop,
+  resetAll,
   showNaive,
 } from './routeengine/store';
+import { naiveRoute, optimizeRoute } from './routeengine/engine';
 import { DEPOT_ID, GRID_MAX, GRID_MIN, type Route, type Stop } from './routeengine/types';
+
+// Round a distance for display without pulling in extra deps.
+function fmt(n: number): string {
+  return n.toFixed(1);
+}
 
 // In-browser delivery route planner. A depot and a set of stops live on a
 // 0..100 grid in localStorage. The safe engine builds a Euclidean distance
@@ -84,6 +91,16 @@ export default function RouteengineDemo() {
     }
     return map;
   }, [route.order]);
+
+  // Naive vs optimized totals, recomputed from the current depot and stops, so
+  // the summary always shows the live improvement even before optimize is run.
+  const compare = useMemo(() => {
+    const naive = naiveRoute(depot, stops).total;
+    const best = optimizeRoute(depot, stops).total;
+    const saved = naive - best;
+    const pct = naive > 0 ? (saved / naive) * 100 : 0;
+    return { naive, best, saved, pct };
+  }, [depot, stops]);
 
   // Stops sorted into the current visit order for the list panel.
   const orderedStops = useMemo(() => {
@@ -260,6 +277,43 @@ export default function RouteengineDemo() {
               ))}
             </ul>
           )}
+
+          <dl className="re__summary" aria-label="Route summary">
+            <div className="re__stat">
+              <dt className="re__statk">Stops</dt>
+              <dd className="re__statv">{stops.length}</dd>
+            </div>
+            <div className="re__stat">
+              <dt className="re__statk">Drawn distance</dt>
+              <dd className="re__statv">{fmt(route.total)}</dd>
+            </div>
+            <div className="re__stat">
+              <dt className="re__statk">Naive total</dt>
+              <dd className="re__statv">{fmt(compare.naive)}</dd>
+            </div>
+            <div className="re__stat">
+              <dt className="re__statk">Optimized total</dt>
+              <dd className="re__statv re__statv--good">{fmt(compare.best)}</dd>
+            </div>
+            <div className="re__stat">
+              <dt className="re__statk">Saved</dt>
+              <dd className="re__statv re__statv--good">{fmt(compare.saved)}</dd>
+            </div>
+            <div className="re__stat">
+              <dt className="re__statk">Improvement</dt>
+              <dd className="re__statv re__statv--good">{fmt(compare.pct)}%</dd>
+            </div>
+          </dl>
+
+          <div className="re__actions">
+            <button
+              type="button"
+              className="re__btn re__btn--ghost"
+              onClick={() => resetAll()}
+            >
+              Reset planner
+            </button>
+          </div>
         </div>
       </div>
     </section>
