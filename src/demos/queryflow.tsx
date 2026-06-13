@@ -69,6 +69,18 @@ function formatCell(value: unknown): string {
   return String(value);
 }
 
+// Format a stored save-time. The number is a snapshot taken at save time, not
+// a clock read during render, so this stays a pure function of its input.
+function formatSavedAt(ms: number): string {
+  if (!ms) return '';
+  const d = new Date(ms);
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate(),
+  ).padStart(2, '0')} ${hh}:${mm}`;
+}
+
 export default function QueryflowDemo() {
   const { query, saved } = useStore();
   const [result, setResult] = useState<ReturnType<typeof runQuery> | null>(null);
@@ -528,7 +540,10 @@ function SaveBar({
               className="qf__saved-load mono"
               onClick={() => loadSaved(s.id)}
             >
-              {s.name}
+              <span className="qf__saved-name">{s.name}</span>
+              {s.savedAt > 0 && (
+                <span className="qf__saved-when">{formatSavedAt(s.savedAt)}</span>
+              )}
             </button>
             <button
               type="button"

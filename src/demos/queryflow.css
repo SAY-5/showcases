@@ -314,6 +314,10 @@ legend.qf__legend {
 
 .qf__saved-load {
   flex: 1 1 auto;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
   text-align: left;
   padding: 8px 12px;
   border: 1px solid var(--line);
@@ -323,6 +327,12 @@ legend.qf__legend {
   font-size: 12.5px;
   cursor: pointer;
   transition: border-color 0.16s ease, background 0.16s ease;
+}
+
+.qf__saved-when {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  color: var(--text-faint);
 }
 
 .qf__saved-load:hover {
