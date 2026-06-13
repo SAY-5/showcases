@@ -7,6 +7,7 @@ import {
   advanceApplication,
   deleteApplication,
   rejectApplication,
+  resetAll,
   setNextAction,
   setStage,
   setToday,
@@ -16,19 +17,23 @@ import {
   canAdvance,
   canReject,
   filterAndSort,
+  followUpsDue,
+  funnelCounts,
   isOnOrBefore,
   nextStageOf,
+  responseRate,
   type SortKey,
   type StageFilter,
 } from './JobApplier/engine';
 import {
+  ADVANCE_PATH,
   STAGE_LABEL,
   STAGES,
   type Application,
   type Stage,
 } from './JobApplier/types';
 
-type View = 'board' | 'list';
+type View = 'board' | 'list' | 'dashboard';
 
 // Board columns are every stage in pipeline order, so the funnel reads left to
 // right and the terminal outcomes sit at the end.
@@ -49,6 +54,12 @@ export default function JobApplierDemo() {
     () => filterAndSort(applications, { stage: stageFilter, query, sort }),
     [applications, stageFilter, query, sort],
   );
+  const counts = useMemo(() => funnelCounts(applications), [applications]);
+  const rate = useMemo(() => responseRate(applications), [applications]);
+  const due = useMemo(
+    () => followUpsDue(applications, today),
+    [applications, today],
+  );
 
   const open = openId
     ? applications.find((a) => a.id === openId) ?? null
@@ -67,7 +78,7 @@ export default function JobApplierDemo() {
       </p>
 
       <div className="ja__nav" role="tablist" aria-label="JobApplier view">
-        {(['board', 'list'] as const).map((v) => (
+        {(['board', 'list', 'dashboard'] as const).map((v) => (
           <button
             key={v}
             role="tab"
@@ -75,7 +86,7 @@ export default function JobApplierDemo() {
             className={`ja__navbtn${view === v ? ' ja__navbtn--on' : ''}`}
             onClick={() => setView(v)}
           >
-            {v === 'board' ? 'Board' : 'List'}
+            {v === 'board' ? 'Board' : v === 'list' ? 'List' : 'Dashboard'}
           </button>
         ))}
         <span className="ja__spacer" />
@@ -91,9 +102,11 @@ export default function JobApplierDemo() {
         </label>
       </div>
 
-      {view === 'board' ? (
+      {view === 'board' && (
         <Board applications={applications} today={today} onOpen={setOpenId} />
-      ) : (
+      )}
+
+      {view === 'list' && (
         <ListView
           rows={filtered}
           today={today}
@@ -105,6 +118,10 @@ export default function JobApplierDemo() {
           onSort={setSort}
           onOpen={setOpenId}
         />
+      )}
+
+      {view === 'dashboard' && (
+        <Dashboard counts={counts} rate={rate} due={due} onOpen={setOpenId} />
       )}
 
       <AddForm />
@@ -493,5 +510,98 @@ function AddForm() {
         Add to wishlist
       </button>
     </form>
+  );
+}
+
+// ---------- dashboard ----------
+
+function Dashboard({
+  counts,
+  rate,
+  due,
+  onOpen,
+}: {
+  counts: Record<Stage, number>;
+  rate: ReturnType<typeof responseRate>;
+  due: Application[];
+  onOpen: (id: string) => void;
+}) {
+  const total = STAGES.reduce((acc, s) => acc + counts[s], 0);
+  const maxCount = Math.max(1, ...ADVANCE_PATH.map((s) => counts[s]));
+
+  return (
+    <div className="ja__dash">
+      <section className="ja__panel glass" aria-label="Pipeline funnel">
+        <h4 className="ja__panel-title">Funnel</h4>
+        <ul className="ja__funnel">
+          {ADVANCE_PATH.map((s) => (
+            <li key={s} className="ja__funnel-row">
+              <span className="ja__funnel-label">{STAGE_LABEL[s]}</span>
+              <span className="ja__funnel-bar">
+                <span
+                  className="ja__funnel-fill"
+                  style={{ width: `${(counts[s] / maxCount) * 100}%` }}
+                />
+              </span>
+              <span className="ja__funnel-num">{counts[s]}</span>
+            </li>
+          ))}
+          <li className="ja__funnel-row ja__funnel-row--rej">
+            <span className="ja__funnel-label">{STAGE_LABEL.rejected}</span>
+            <span className="ja__funnel-bar" aria-hidden="true" />
+            <span className="ja__funnel-num">{counts.rejected}</span>
+          </li>
+        </ul>
+        <p className="ja__panel-foot">{total} applications tracked</p>
+      </section>
+
+      <section className="ja__panel glass" aria-label="Response rate">
+        <h4 className="ja__panel-title">Response rate</h4>
+        <p className="ja__rate-big">{rate.rate}%</p>
+        <p className="ja__panel-foot">
+          {rate.responded} of {rate.submitted} submitted applications reached a
+          screen or beyond.
+        </p>
+      </section>
+
+      <section
+        className="ja__panel glass ja__panel--wide"
+        aria-label="Follow-ups due"
+      >
+        <h4 className="ja__panel-title">Follow-ups due</h4>
+        {due.length === 0 ? (
+          <p className="ja__panel-foot">Nothing is due as of the date set.</p>
+        ) : (
+          <ul className="ja__due">
+            {due.map((a) => (
+              <li key={a.id}>
+                <button
+                  type="button"
+                  className="ja__due-row"
+                  onClick={() => onOpen(a.id)}
+                >
+                  <span className="ja__due-when">{a.nextActionDate}</span>
+                  <span className="ja__due-co">{a.company}</span>
+                  <span className="ja__due-role">{a.role}</span>
+                  <span className={`ja__chip ja__chip--${a.stage}`}>
+                    {STAGE_LABEL[a.stage]}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <div className="demo__controls ja__dash-reset">
+        <button
+          type="button"
+          className="demo__btn demo__btn--ghost"
+          onClick={resetAll}
+        >
+          Reset to seed data
+        </button>
+      </div>
+    </div>
   );
 }

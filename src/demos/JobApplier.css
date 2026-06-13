@@ -371,6 +371,126 @@
   border-top: 1px solid var(--line-soft);
 }
 
+/* ---------- dashboard ---------- */
+
+.ja__dash {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.ja__panel {
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+.ja__panel--wide {
+  grid-column: 1 / -1;
+}
+.ja__panel-title {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 14px;
+}
+.ja__panel-foot {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  margin: 12px 0 0;
+}
+
+.ja__funnel {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.ja__funnel-row {
+  display: grid;
+  grid-template-columns: 84px 1fr 28px;
+  align-items: center;
+  gap: 10px;
+}
+.ja__funnel-label {
+  font-size: 12.5px;
+  color: var(--text);
+}
+.ja__funnel-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--ink-700);
+  overflow: hidden;
+}
+.ja__funnel-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--magenta));
+  transition: width 0.3s ease;
+}
+.ja__funnel-num {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text-strong);
+  text-align: right;
+}
+.ja__funnel-row--rej .ja__funnel-label {
+  color: var(--text-dim);
+}
+
+.ja__rate-big {
+  font-family: var(--display);
+  font-size: 48px;
+  line-height: 1;
+  color: var(--text-strong);
+  margin: 0;
+}
+
+.ja__due {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ja__due-row {
+  display: grid;
+  grid-template-columns: 110px 1fr 1fr auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--ink-800);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.16s ease;
+}
+.ja__due-row:hover {
+  border-color: var(--accent-line);
+}
+.ja__due-when {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--magenta);
+}
+.ja__due-co {
+  font-weight: 600;
+  color: var(--text-strong);
+}
+.ja__due-role {
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+.ja__dash-reset {
+  grid-column: 1 / -1;
+}
+
 /* ---------- responsive ---------- */
 
 @media (max-width: 760px) {
