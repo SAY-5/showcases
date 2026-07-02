@@ -1,0 +1,266 @@
+/* snapvault backup pipeline. Built on the cinematic theme tokens; everything
+   is scoped under a .svt__ prefix to avoid collisions with the shared shell. */
+
+.svt__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.svt__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .svt__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.svt__panel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--ink-900);
+  padding: 14px;
+}
+.svt__panel--restore {
+  margin-top: 14px;
+}
+.svt__panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+.svt__panel-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.svt__note {
+  font-size: 13px;
+  color: var(--text-faint);
+  line-height: 1.5;
+  margin: 10px 0 0;
+}
+
+/* ---------- files ---------- */
+.svt__files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.svt__file {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line-soft);
+  background: var(--ink-850);
+}
+.svt__file-path {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text);
+}
+.svt__file-edited {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--magenta);
+  border: 1px solid rgba(255, 43, 208, 0.45);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+.svt__file-blocks {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.svt__snaps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  min-height: 20px;
+}
+.svt__snap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--accent-line);
+  background: var(--accent-soft);
+}
+.svt__snap-name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.svt__snap-line {
+  font-size: 13px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.svt__snap-line b {
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+/* ---------- cluster ---------- */
+.svt__nodes {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+@media (max-width: 640px) {
+  .svt__nodes {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+.svt__node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 6px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--ink-850);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    transform 0.16s ease;
+}
+.svt__node:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: var(--accent-line);
+}
+.svt__node:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.svt__node--down {
+  border-color: rgba(255, 43, 208, 0.5);
+  background: var(--magenta-soft);
+}
+.svt__node-name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-strong);
+}
+.svt__node-state {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ok);
+}
+.svt__node--down .svt__node-state {
+  color: var(--magenta);
+}
+.svt__node-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- restore ---------- */
+.svt__chunks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+  min-height: 30px;
+}
+.svt__chunk {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--ink-850);
+}
+.svt__chunk--ok {
+  border-color: rgba(61, 220, 145, 0.4);
+}
+.svt__chunk--missing {
+  border-color: rgba(255, 43, 208, 0.55);
+  background: var(--magenta-soft);
+}
+.svt__chunk-hash {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.svt__chunk-from {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--ok);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.svt__chunk--missing .svt__chunk-from {
+  color: var(--magenta);
+}
+
+.svt__verdict {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 14px;
+  padding: 13px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(61, 220, 145, 0.45);
+  background: rgba(61, 220, 145, 0.1);
+}
+.svt__verdict--fail {
+  border-color: rgba(255, 43, 208, 0.5);
+  background: var(--magenta-soft);
+}
+.svt__verdict-head {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+.svt__verdict-text {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+}
