@@ -3411,6 +3411,52 @@ export const projects: ProjectData[] = [
     ],
     "demoConcept": "A job tracker that animates a request moving through the six provisioning stages with a progress bar, alongside a worker-pool view showing concurrent jobs and a days-to-minutes time comparison.",
     "flagshipScore": 9
+  },
+  {
+    "name": "diagkit",
+    "title": "diagkit",
+    "tagline": "Support diagnostic CLI that clusters failure signatures and ranks likely root causes",
+    "summary": "diagkit pulls the logs, traces, and metrics for an incident window, clusters the recurring failure signatures, correlates them with trace errors and metric spikes, and prints the likely root cause as one ranked, explainable answer. A Go collector simulates a four-service topology (gateway to orders to payments to db) from a seeded PRNG and normalizes each log message into a template so recurring failures group into signature clusters; a Python analyzer consumes the resulting incident bundle and scores each service from signature density, metric spikes, and dependency propagation. Same seed, same scenario, same answer, every time.",
+    "category": "Developer Tools",
+    "stack": [
+      "Go",
+      "Python",
+      "Click",
+      "pytest",
+      "Docker",
+      "Make"
+    ],
+    "highlights": [
+      "The two halves interoperate through a single versioned JSON document, the incident bundle: the schema is defined once on each side and both check the version, so the Go collector and Python analyzer stay honest with each other",
+      "On the injected payments outage the ranking names payments correctly and says why: it owns the densest error signature, its p95 latency spiked 4.2x baseline, its error rate peaked at 74 percent, and 100 percent of entry errors trace through it",
+      "Log fingerprinting normalizes each message into a template so 617 raw log lines collapse into 4 recurring signatures, turning a wall of noise into a countable, rankable list",
+      "The whole pipeline runs against a seeded, simulated distributed system, so payments-outage, db-slowdown, and healthy scenarios are reproducible with no real cluster; the Go side is standard library only and CI exercises both halves on every push"
+    ],
+    "demoConcept": "An incident-diagnosis console: raw log lines stream in and collapse into normalized signature templates with counts, services light up in a ranked root-cause list with each score explained, and a scenario toggle flips the injected fault so a different service deterministically becomes the culprit",
+    "flagshipScore": 8
+  },
+  {
+    "name": "snapvault",
+    "title": "snapvault",
+    "tagline": "Distributed backup and rapid-restore with content-addressed dedup and hash-verified parallel recovery",
+    "summary": "snapvault takes incremental snapshots of a dataset using content-addressed storage, replicates the resulting chunks across simulated storage nodes, and restores them in parallel while verifying integrity through hashing and recovering across node failures. A C++17 engine owns the storage core: a from-scratch SHA-256, a chunker, a deduplicating content store, and snapshot manifests. A Go engine owns the distributed layer: N simulated nodes, replication factor R, deterministic placement seeded by content hash, parallel verified restore, and node-failure recovery. The two share one on-disk format that is the single source of truth.",
+    "category": "Systems and C++",
+    "stack": [
+      "C++17",
+      "Go",
+      "CMake",
+      "CTest",
+      "SHA-256",
+      "Make"
+    ],
+    "highlights": [
+      "Content addressing deduplicates for free: the demo dataset's first snapshot stores only 33 of 63 chunk references because an identical file collapses into existing chunks, and the incremental snapshot after editing one file writes exactly 1 new chunk",
+      "The Go layer distributes 33 unique chunks across 5 nodes at replication factor 3 (99 chunk copies) with placement derived deterministically from each chunk's content hash, so runs are fully reproducible",
+      "After a node is marked down, the parallel restore fetches every chunk from surviving replicas, re-hashes each on arrival against its content address, and the restored tree matches the original byte-for-byte",
+      "The shared chunk-plus-manifest format is written by C++ and read by Go, pinned down in FORMAT.md and enforced by CTest suites on one side and race-enabled Go tests on the other"
+    ],
+    "demoConcept": "A backup pipeline you can drive end to end: files shatter into content-hashed chunks that visibly collapse in the dedup store, replicas fan out across a node grid, and failing a node kicks off a parallel restore with a verification tick per chunk and a byte-for-byte final verdict",
+    "flagshipScore": 8
   }
 ];
 
