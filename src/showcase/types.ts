@@ -4,8 +4,10 @@ export type ProjectData = {
   tagline: string;
   summary: string;
   category: string;
+  language: string;
   stack: string[];
   highlights: string[];
   demoConcept: string;
-  flagshipScore?: number;
+  flagshipScore: number;
+  isFlagship: boolean;
 };
