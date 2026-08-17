@@ -83,7 +83,7 @@ export function IndexPage() {
         matchesQuery(p, q),
     );
     if (sort === 'name') {
-      return filtered.sort((a, b) => a.name.localeCompare(b.name));
+      return filtered.sort((a, b) => a.title.localeCompare(b.title));
     }
     return filtered;
   }, [q, category, language, sort]);
