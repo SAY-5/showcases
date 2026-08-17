@@ -1,171 +1,172 @@
 import type { ComponentType } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { ProjectData } from './types';
+import Arrow from './Arrow';
+import GitHubIcon from './GitHubIcon';
+import { portfolioWriteup, repoUrl } from './links';
+import { useDocumentTitle } from './useDocumentTitle';
 import './Showcase.css';
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
-const streaks = [
-  { top: '28%', duration: 14, delay: 0, magenta: false },
-  { top: '52%', duration: 18, delay: 2.1, magenta: true },
-  { top: '71%', duration: 16, delay: 1.4, magenta: false },
-];
+type Neighbour = Pick<ProjectData, 'name' | 'title'>;
 
 type ShowcaseProps = {
   data: ProjectData;
   Demo: ComponentType;
+  /** 1-based catalog position in the dataset. */
+  number: number;
+  prev?: Neighbour | null;
+  next?: Neighbour | null;
   homeHref?: string;
 };
 
-export function Showcase({ data, Demo, homeHref = '/' }: ShowcaseProps) {
+const pad = (n: number) => String(n).padStart(3, '0');
+
+export function Showcase({
+  data,
+  Demo,
+  number,
+  prev = null,
+  next = null,
+  homeHref = '/',
+}: ShowcaseProps) {
   const reduce = useReducedMotion();
-  const repoUrl = `https://github.com/SAY-5/${data.name}`;
+  useDocumentTitle(data.title);
 
-  const rise = (delay: number) =>
-    reduce
-      ? {}
-      : {
-          initial: { opacity: 0, y: 18, filter: 'blur(8px)' },
-          animate: { opacity: 1, y: 0, filter: 'blur(0px)' },
-          transition: { duration: 0.7, delay, ease },
-        };
+  const github = repoUrl(data.name);
+  const writeup = portfolioWriteup(data.name);
 
-  const onScroll = (delay = 0) =>
-    reduce
-      ? {}
-      : {
-          initial: { opacity: 0, y: 24 },
-          whileInView: { opacity: 1, y: 0 },
-          viewport: { once: true, margin: '-80px' },
-          transition: { duration: 0.6, delay, ease },
-        };
+  const item = {
+    hidden: { opacity: 0, y: reduce ? 0 : 16 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.55, ease } },
+  };
 
   return (
-    <div className="sc">
-      <header className="sc-hero">
-        <div className="sc-hero__bg" aria-hidden="true" />
-        <div className="sc-hero__streaks" aria-hidden="true">
-          {streaks.map((s, i) => (
-            <motion.span
-              key={i}
-              className={`sc-streak${s.magenta ? ' sc-streak--magenta' : ''}`}
-              style={{ top: s.top }}
-              initial={reduce ? false : { x: '-12%', opacity: 0 }}
-              animate={
-                reduce ? undefined : { x: ['-12%', '12%'], opacity: [0, 0.32, 0] }
-              }
-              transition={
-                reduce
-                  ? undefined
-                  : {
-                      duration: s.duration,
-                      delay: s.delay,
-                      repeat: Infinity,
-                      ease: 'linear',
-                    }
-              }
-            />
-          ))}
-        </div>
-        <motion.div
-          className="sc-hero__glow"
-          aria-hidden="true"
-          animate={
-            reduce ? undefined : { scale: [1, 1.12, 1], opacity: [0.22, 0.32, 0.22] }
-          }
-          transition={
-            reduce ? undefined : { duration: 12, repeat: Infinity, ease: 'easeInOut' }
-          }
-        />
+    <article className="detail">
+      <div className="wrap">
+        <Link to={homeHref} className="detail__back">
+          <Arrow dir="left" size={13} /> Index
+        </Link>
 
-        <div className="sc-hero__inner">
-          <motion.span className="sc-hero__eyebrow mono" {...rise(0.05)}>
-            {data.category}
-          </motion.span>
-          <motion.h1 className="sc-hero__title" {...rise(0.12)}>
+        <motion.header
+          className="detail__head"
+          initial="hidden"
+          animate="show"
+          variants={{ show: { transition: { staggerChildren: 0.07 } } }}
+        >
+          <motion.p className="detail__meta" variants={item}>
+            <span className="detail__idx mono num">{pad(number)}</span>
+            <span className="detail__dot" aria-hidden="true" />
+            <span>{data.language}</span>
+            <span className="detail__dot" aria-hidden="true" />
+            <span>{data.category}</span>
+            {data.isFlagship && (
+              <>
+                <span className="detail__dot" aria-hidden="true" />
+                <span className="detail__flag">Selected</span>
+              </>
+            )}
+          </motion.p>
+          <motion.h1 className="detail__title" variants={item}>
             {data.title}
           </motion.h1>
-          <motion.p className="sc-hero__tagline" {...rise(0.22)}>
+          <motion.p className="detail__tagline" variants={item}>
             {data.tagline}
           </motion.p>
-          <motion.div className="sc-hero__actions" {...rise(0.34)}>
-            <a className="sc-btn sc-btn--primary" href="#demo">
-              See the demo
+          <motion.div className="detail__links" variants={item}>
+            <a className="btn btn--solid" href="#demo">
+              Jump to the demo <Arrow className="btn__arrow" />
             </a>
             <a
-              className="sc-btn sc-btn--ghost"
-              href={repoUrl}
+              className="tlink detail__gh"
+              href={github}
               target="_blank"
               rel="noreferrer"
             >
-              View on GitHub
+              <GitHubIcon size={13} /> SAY-5/{data.name}
             </a>
           </motion.div>
+        </motion.header>
+
+        <section
+          id="demo"
+          className="detail__demo surface"
+          aria-label="Interactive demo"
+        >
+          <div className="detail__demo-band">
+            <Demo />
+          </div>
+        </section>
+
+        <div className="detail__body">
+          <div className="detail__main">
+            <section className="detail__section">
+              <h2 className="detail__h2">What it is</h2>
+              <p className="detail__summary">{data.summary}</p>
+            </section>
+
+            <section className="detail__section">
+              <h2 className="detail__h2">Notes</h2>
+              <ul className="detail__highlights">
+                {data.highlights.map((h, i) => (
+                  <li key={i} className="detail__highlight">
+                    {h}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </div>
+
+          <aside className="detail__aside surface">
+            <div className="detail__panel">
+              <h2 className="detail__panel-title">Stack</h2>
+              <p className="detail__stack">{data.stack.join(', ')}</p>
+            </div>
+            <div className="detail__panel">
+              <h2 className="detail__panel-title">Links</h2>
+              <a
+                className="detail__link-row"
+                href={github}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <GitHubIcon size={13} /> Source on GitHub
+              </a>
+              <a className="detail__link-row" href={writeup}>
+                <Arrow size={13} /> Portfolio write-up
+              </a>
+            </div>
+          </aside>
         </div>
-      </header>
 
-      <main>
-        <motion.section id="demo" className="sc-section sc-demo" {...onScroll()}>
-          <div className="sc-frame glass">
-            <div className="sc-frame__edge" aria-hidden="true" />
-            <div className="sc-frame__head">
-              <span className="sc-kicker mono">Interactive demo</span>
-              <p className="sc-frame__concept">{data.demoConcept}</p>
-            </div>
-            <div className="sc-frame__stage">
-              <Demo />
-            </div>
-          </div>
-        </motion.section>
-
-        <motion.section id="how" className="sc-section sc-how" {...onScroll()}>
-          <div className="sc-section__head">
-            <span className="sc-kicker mono">How it works</span>
-            <p className="sc-how__summary">{data.summary}</p>
-          </div>
-          <ul className="sc-highlights">
-            {data.highlights.map((h, i) => (
-              <motion.li className="sc-highlight glass" key={i} {...onScroll(i * 0.04)}>
-                <span className="sc-highlight__num mono">
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                <span className="sc-highlight__text">{h}</span>
-              </motion.li>
-            ))}
-          </ul>
-          <div className="sc-stack">
-            {data.stack.map((s) => (
-              <span className="sc-chip mono" key={s}>
-                {s}
+        <nav className="detail__nav" aria-label="Project navigation">
+          {prev ? (
+            <Link to={`/${prev.name}`} className="detail__nav-link">
+              <span className="detail__nav-dir">
+                <Arrow dir="left" size={12} /> Previous
               </span>
-            ))}
-          </div>
-        </motion.section>
-      </main>
-
-      <footer className="sc-footer">
-        <div className="sc-footer__inner">
-          <div>
-            <p className="sc-footer__title">{data.title}</p>
-            <p className="sc-footer__cat mono">{data.category}</p>
-          </div>
-          <a
-            className="sc-btn sc-btn--ghost"
-            href={repoUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Source on GitHub
-          </a>
-        </div>
-        <p className="sc-footer__note">
-          A single-page demo built from the project itself. Everything on this
-          page runs in the browser.
-        </p>
-        <a className="sc-footer__home mono" href={homeHref}>
-          Back to all projects
-        </a>
-      </footer>
-    </div>
+              <span className="detail__nav-name">{prev.title}</span>
+            </Link>
+          ) : (
+            <span />
+          )}
+          {next ? (
+            <Link
+              to={`/${next.name}`}
+              className="detail__nav-link detail__nav-link--next"
+            >
+              <span className="detail__nav-dir">
+                Next <Arrow dir="right" size={12} />
+              </span>
+              <span className="detail__nav-name">{next.title}</span>
+            </Link>
+          ) : (
+            <span />
+          )}
+        </nav>
+      </div>
+    </article>
   );
 }
