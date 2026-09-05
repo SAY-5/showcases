@@ -1,176 +1,297 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { motion, useReducedMotion } from 'framer-motion';
-import { projects } from '../data/projects';
-import { HeroBackdrop } from './HeroBackdrop';
+import {
+  useMemo,
+  useEffect,
+  useRef,
+  useDeferredValue,
+  useCallback,
+} from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { projects, categories, languages } from '../data/projects';
+import type { ProjectData } from '../showcase/types';
+import ClusterPoster from '../showcase/ClusterPoster';
+import { useDocumentTitle } from '../showcase/useDocumentTitle';
+import { ProjectRow } from './ProjectRow';
 import './IndexPage.css';
 
-const ease = [0.22, 1, 0.36, 1] as const;
+type Sort = 'catalog' | 'name';
+
+const indexOf = new Map(projects.map((p, i) => [p.name, i + 1]));
+
+function matchesQuery(p: ProjectData, q: string) {
+  if (!q) return true;
+  const hay = [
+    p.title,
+    p.tagline,
+    p.summary,
+    p.category,
+    p.language,
+    ...p.stack,
+  ]
+    .join(' ')
+    .toLowerCase();
+  return hay.includes(q);
+}
 
 export function IndexPage() {
-  const reduce = useReducedMotion();
-  const [query, setQuery] = useState('');
-  const [activeCat, setActiveCat] = useState('All');
+  useDocumentTitle();
+  const [params, setParams] = useSearchParams();
+  const query = params.get('q') ?? '';
+  const category = params.get('c');
+  const language = params.get('l');
+  const sort: Sort = params.get('sort') === 'name' ? 'name' : 'catalog';
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const categories = useMemo(() => {
-    const set = new Set(projects.map((p) => p.category));
-    return ['All', ...Array.from(set).sort()];
+  const update = useCallback(
+    (patch: Record<string, string | null>) => {
+      const next = new URLSearchParams(params);
+      for (const [k, v] of Object.entries(patch)) {
+        if (v === null || v === '') next.delete(k);
+        else next.set(k, v);
+      }
+      setParams(next, { replace: true });
+    },
+    [params, setParams],
+  );
+
+  // "/" focuses search from anywhere on the page.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (
+        t &&
+        (t.tagName === 'INPUT' ||
+          t.tagName === 'TEXTAREA' ||
+          t.tagName === 'SELECT')
+      )
+        return;
+      e.preventDefault();
+      inputRef.current?.focus();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return projects.filter((p) => {
-      if (activeCat !== 'All' && p.category !== activeCat) return false;
-      if (!q) return true;
-      return [p.title, p.tagline, p.category, p.stack.join(' ')]
-        .join(' ')
-        .toLowerCase()
-        .includes(q);
-    });
-  }, [query, activeCat]);
+  const deferredQuery = useDeferredValue(query);
+  const q = deferredQuery.trim().toLowerCase();
 
-  const rise = (delay: number) =>
-    reduce
-      ? {}
-      : {
-          initial: { opacity: 0, y: 18 },
-          animate: { opacity: 1, y: 0 },
-          transition: { duration: 0.6, delay, ease },
-        };
+  const visible = useMemo(() => {
+    const filtered = projects.filter(
+      (p) =>
+        (!category || p.category === category) &&
+        (!language || p.language === language) &&
+        matchesQuery(p, q),
+    );
+    if (sort === 'name') {
+      return filtered.sort((a, b) => a.title.localeCompare(b.title));
+    }
+    return filtered;
+  }, [q, category, language, sort]);
+
+  // Facet counts respect the other active filter and the query.
+  const categoryCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of projects) {
+      if (language && p.language !== language) continue;
+      if (!matchesQuery(p, q)) continue;
+      m.set(p.category, (m.get(p.category) ?? 0) + 1);
+    }
+    return m;
+  }, [language, q]);
+  const languageCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of projects) {
+      if (category && p.category !== category) continue;
+      if (!matchesQuery(p, q)) continue;
+      m.set(p.language, (m.get(p.language) ?? 0) + 1);
+    }
+    return m;
+  }, [category, q]);
+
+  const active = Boolean(category || language || query.trim());
+  const listKey = `${category ?? ''}|${language ?? ''}|${sort}`;
+  const selectedCount = projects.filter((p) => p.isFlagship).length;
 
   return (
-    <div className="idx">
-      <header className="idx-hero">
-        <HeroBackdrop />
-        <div className="idx-hero__inner">
-          <motion.span className="idx-hero__eyebrow mono glass" {...rise(0.05)}>
-            <span className="idx-hero__dot" aria-hidden="true" />
-            Interactive engineering demos
-          </motion.span>
-          <motion.h1 className="idx-hero__title" {...rise(0.12)}>
-            <span className="idx-hero__title-line">Project</span>
-            <span className="idx-hero__title-line idx-hero__title-accent">
-              Showcases
-            </span>
-          </motion.h1>
-          <motion.p className="idx-hero__tagline" {...rise(0.2)}>
-            Every project gets a standalone page with a live, in-browser demo.
-            Pick one to open its full showcase.
-          </motion.p>
-          <motion.div className="idx-hero__stats" {...rise(0.28)}>
-            <span className="idx-stat">
-              <span className="idx-stat__num">{projects.length}</span>
-              <span className="idx-stat__label mono">Projects</span>
-            </span>
-            <span className="idx-stat">
-              <span className="idx-stat__num">{categories.length - 1}</span>
-              <span className="idx-stat__label mono">Categories</span>
-            </span>
-            <span className="idx-stat">
-              <span className="idx-stat__num">100%</span>
-              <span className="idx-stat__label mono">In browser</span>
-            </span>
-          </motion.div>
-        </div>
+    <div className="work">
+      <header className="work__head wrap">
+        <h1 className="work__metric">
+          <span className="metric work__count">{projects.length}</span>
+          <span className="work__metric-cap">
+            standalone
+            <br />
+            demos
+          </span>
+        </h1>
+        <p className="work__lede">
+          Each one is the project's own demo running in the browser. Filter by
+          category or language, or search.
+        </p>
       </header>
 
-      <section className="idx-toolbar" aria-label="Filter projects">
-        <div className="idx-toolbar__inner">
-          <div className="idx-search">
-            <div className="idx-search__field">
-              <span className="idx-search__icon" aria-hidden="true">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                >
-                  <circle cx="11" cy="11" r="7" />
-                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-              </span>
-              <input
-                className="idx-search__input"
-                type="search"
-                placeholder="Search by name, stack, or category"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                aria-label="Search projects"
-              />
-            </div>
-            <span className="idx-search__count mono">
-              <strong>{filtered.length}</strong> of {projects.length}
-            </span>
+      <div className="wrap">
+        <figure className="work__poster surface">
+          <div className="work__poster-stage">
+            <ClusterPoster />
           </div>
-          <ul className="idx-cats" aria-label="Categories">
-            {categories.map((cat) => (
-              <li key={cat}>
+          <figcaption className="work__poster-cap">
+            One block per showcase. Lit blocks are the selected projects.
+            <span className="work__poster-count mono num">
+              {selectedCount} of {projects.length}
+            </span>
+          </figcaption>
+        </figure>
+      </div>
+
+      <div className="wrap">
+        <div className="work__panel surface">
+          <div className="work__controls">
+            <label className="work__search">
+              <span className="work__search-label">Search</span>
+              <input
+                ref={inputRef}
+                type="search"
+                value={query}
+                onChange={(e) => update({ q: e.target.value })}
+                placeholder="name, language, or stack"
+                name="q"
+                inputMode="search"
+                spellCheck={false}
+                aria-label="Search showcases"
+                className="work__input"
+                autoComplete="off"
+              />
+            </label>
+
+            <div className="work__sort" role="group" aria-label="Sort">
+              <span className="work__sort-label">Sort</span>
+              <button
+                type="button"
+                className={`work__sort-btn ${sort === 'catalog' ? 'is-active' : ''}`}
+                aria-pressed={sort === 'catalog'}
+                onClick={() => update({ sort: null })}
+              >
+                Catalog order
+              </button>
+              <button
+                type="button"
+                className={`work__sort-btn ${sort === 'name' ? 'is-active' : ''}`}
+                aria-pressed={sort === 'name'}
+                onClick={() => update({ sort: 'name' })}
+              >
+                A to Z
+              </button>
+            </div>
+          </div>
+
+          <div className="work__filters">
+            <div className="facet" role="group" aria-label="Category">
+              <span className="facet__label">Category</span>
+              <div className="facet__items">
                 <button
                   type="button"
-                  className="idx-cat"
-                  aria-pressed={activeCat === cat}
-                  onClick={() => setActiveCat(cat)}
+                  className={`facet__btn ${category === null ? 'is-active' : ''}`}
+                  aria-pressed={category === null}
+                  onClick={() => update({ c: null })}
                 >
-                  {cat}
+                  All
                 </button>
-              </li>
-            ))}
-          </ul>
+                {categories.map((c) => {
+                  const n = categoryCounts.get(c) ?? 0;
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      className={`facet__btn ${category === c ? 'is-active' : ''} ${n === 0 ? 'is-empty' : ''}`}
+                      aria-pressed={category === c}
+                      onClick={() => update({ c: category === c ? null : c })}
+                    >
+                      {c}
+                      <span className="facet__count mono num">{n}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="facet" role="group" aria-label="Language">
+              <span className="facet__label">Language</span>
+              <div className="facet__items">
+                <button
+                  type="button"
+                  className={`facet__btn ${language === null ? 'is-active' : ''}`}
+                  aria-pressed={language === null}
+                  onClick={() => update({ l: null })}
+                >
+                  All
+                </button>
+                {languages.map((l) => {
+                  const n = languageCounts.get(l) ?? 0;
+                  return (
+                    <button
+                      key={l}
+                      type="button"
+                      className={`facet__btn ${language === l ? 'is-active' : ''} ${n === 0 ? 'is-empty' : ''}`}
+                      aria-pressed={language === l}
+                      onClick={() => update({ l: language === l ? null : l })}
+                    >
+                      {l}
+                      <span className="facet__count mono num">{n}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div className="work__status" aria-live="polite">
+            <span className="work__shown mono">
+              {active
+                ? `${visible.length} of ${projects.length}`
+                : `${projects.length} showcases`}
+            </span>
+            {active && (
+              <button
+                type="button"
+                className="work__clear tlink"
+                onClick={() => setParams({}, { replace: true })}
+              >
+                Clear
+              </button>
+            )}
+          </div>
         </div>
-      </section>
+      </div>
 
-      <main className="idx-main">
-        <ul className="idx-grid">
-          {filtered.map((p, i) => (
-            <motion.li
-              key={p.name}
-              className="idx-card"
-              initial={reduce ? false : { opacity: 0, y: 18 }}
-              whileInView={reduce ? undefined : { opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.5, delay: Math.min(i, 7) * 0.04, ease }}
-            >
-              <Link className="idx-card__link" to={`/${p.name}`}>
-                <span className="idx-card__cat mono">{p.category}</span>
-                <span className="idx-card__title">{p.title}</span>
-                <span className="idx-card__tagline">{p.tagline}</span>
-                <span className="idx-card__stack mono">
-                  {p.stack.slice(0, 4).join(' / ')}
-                </span>
-                <span className="idx-card__cta mono">
-                  Open showcase
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                    <polyline points="12 5 19 12 12 19" />
-                  </svg>
-                </span>
-              </Link>
-            </motion.li>
-          ))}
-        </ul>
-        {filtered.length === 0 && (
-          <p className="idx-empty mono">No projects match those filters.</p>
+      <div className="wrap">
+        {visible.length === 0 ? (
+          <div className="work__empty">
+            <p className="work__empty-title">Nothing matches that.</p>
+            <p className="work__empty-sub">
+              Try a shorter search, or{' '}
+              <button
+                type="button"
+                className="tlink work__empty-clear"
+                onClick={() => setParams({}, { replace: true })}
+              >
+                clear the filters
+              </button>{' '}
+              and start again.
+            </p>
+          </div>
+        ) : (
+          <ol className="rows" key={listKey}>
+            {visible.map((p, i) => (
+              <ProjectRow
+                key={p.name}
+                project={p}
+                number={indexOf.get(p.name) ?? i + 1}
+                animIndex={i}
+              />
+            ))}
+          </ol>
         )}
-      </main>
-
-      <footer className="idx-footer">
-        <p className="idx-footer__note mono">
-          Each page runs its demo entirely in the browser.
-        </p>
-      </footer>
+      </div>
     </div>
   );
 }

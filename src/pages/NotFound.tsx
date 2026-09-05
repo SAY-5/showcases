@@ -1,17 +1,26 @@
 import { Link } from 'react-router-dom';
+import Arrow from '../showcase/Arrow';
+import { PORTFOLIO_URL } from '../showcase/links';
+import { useDocumentTitle } from '../showcase/useDocumentTitle';
 import './NotFound.css';
 
 export function NotFound() {
+  useDocumentTitle('Not found');
   return (
-    <div className="nf">
-      <span className="nf__code mono">404</span>
-      <h1 className="nf__title">No showcase here</h1>
-      <p className="nf__text">
-        That project route does not exist. Head back to browse every demo.
-      </p>
-      <Link className="nf__link mono" to="/">
-        Back to all projects
-      </Link>
-    </div>
+    <section className="wrap notfound" aria-labelledby="nf-title">
+      <h1 id="nf-title" className="notfound__title">
+        <span className="notfound__code">404</span>
+        <span className="notfound__text">Nothing at this address.</span>
+      </h1>
+      <p className="notfound__sub">Everything else is in the index.</p>
+      <div className="notfound__links">
+        <Link className="btn btn--solid" to="/">
+          Open the index <Arrow className="btn__arrow" />
+        </Link>
+        <a className="tlink" href={PORTFOLIO_URL}>
+          Portfolio
+        </a>
+      </div>
+    </section>
   );
 }
