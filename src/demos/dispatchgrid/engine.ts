@@ -52,6 +52,7 @@ export class Engine {
   private nextPollAt = 0;
   private runEndsAt = 0;
   submitted = 0;
+  loadRuns = 0;
   pingsOk = 0;
   manualSeq = 0;
   // Partition activity in the last tick, for the pipeline view.
@@ -84,6 +85,7 @@ export class Engine {
   // Start the 60 s load run: 10 rides a second, round-robin across cities.
   startLoad(): void {
     if (this.loadRunning) return;
+    this.loadRuns += 1;
     this.nextRideAt = this.now;
     this.runEndsAt = this.now + RUN_MS;
   }

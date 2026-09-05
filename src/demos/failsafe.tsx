@@ -214,8 +214,8 @@ export default function FailsafeDemo() {
             >
               {focus.failStatus ? `Stop 503 on ${focus.label}` : `Make ${focus.label} answer 503`}
             </button>
-            <button className="demo__btn demo__btn--ghost" onClick={act(() => { for (let i = 0; i < 6; i++) run.send('GET', false); })}>
-              Send 6 GETs
+            <button className="demo__btn demo__btn--ghost" onClick={act(() => { for (let i = 0; i < 12; i++) run.send('GET', false); })}>
+              Send 12 GETs
             </button>
           </div>
           <ul className="fs__transitions mono">
@@ -225,7 +225,7 @@ export default function FailsafeDemo() {
                 <span>{t.upstream}: {t.from.replace('_', '-')} to {t.to.replace('_', '-')}</span>
               </li>
             ))}
-            {transitions.length === 0 && <li className="fs__empty">Breaker transitions appear here. A 503 replica trips after 3 consecutive failures; the retry lands on another replica so the client still sees 200.</li>}
+            {transitions.length === 0 && <li className="fs__empty">Breaker transitions appear here. Round-robin sends every third GET to the 503 replica; three consecutive failures there trip it open, and each failed attempt is retried on another replica so the client still sees 200.</li>}
           </ul>
         </section>
       </div>

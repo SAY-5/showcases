@@ -178,10 +178,14 @@ export class ChaosRun {
       }
     }
     const endAt = this.startedAt + CHAOS.durationSeconds;
-    if (this.autoChaos && now >= this.nextKill) {
-      if (now < endAt - CHAOS.restartAfter) this.kill();
-      else this.autoChaos = false;
-      this.scheduleKill(this.rng.uniform(CHAOS.killIntervalMin, CHAOS.killIntervalMax));
+    if (now >= this.nextKill) {
+      if (this.autoChaos && now < endAt - CHAOS.restartAfter) {
+        this.kill();
+        this.scheduleKill(this.rng.uniform(CHAOS.killIntervalMin, CHAOS.killIntervalMax));
+      } else {
+        this.autoChaos = false;
+        this.nextKill = Infinity;
+      }
     }
     while (this.nextArrival <= now) {
       if (this.nextArrival >= endAt) {

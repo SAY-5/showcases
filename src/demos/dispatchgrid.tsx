@@ -150,7 +150,7 @@ export default function DispatchgridDemo() {
 
   const drivers = engine.index.drivers(city.id);
   const loadRunning = engine.loadRunning;
-  const loadProgress = loadRunning ? Math.max(0, Math.min(1, 1 - (engine.loadEndsAt - engine.time) / RUN_MS)) : engine.submitted > 0 ? 1 : 0;
+  const loadProgress = loadRunning ? Math.max(0, Math.min(1, 1 - (engine.loadEndsAt - engine.time) / RUN_MS)) : engine.loadRuns > 0 ? 1 : 0;
   const lag = engine.streamsConsumer.lag();
   const pulse = engine.partitionPulse;
   const pipelineCities = engine.cities.map((c) => ({ ...c, partition: partitionFor(String(c.id)) }));
@@ -339,7 +339,7 @@ export default function DispatchgridDemo() {
             </div>
             <div className="demo__controls dg__controls dg__controls--top">
               <button className="demo__btn" onClick={startLoad} disabled={loadRunning}>
-                {loadRunning ? 'Running...' : engine.submitted > 0 ? 'Run again' : 'Start the run'}
+                {loadRunning ? 'Running...' : engine.loadRuns > 0 ? 'Run again' : 'Start the run'}
               </button>
               <div className="dg__speeds" role="group" aria-label="Simulation speed">
                 {SPEEDS.map((s) => (
