@@ -1,0 +1,603 @@
+/* dispatchgrid marketplace matching. Built on the cinematic theme tokens;
+   scoped under a .dg__ prefix to avoid collisions with the shared shell. */
+
+.dg__panel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--ink-900);
+  padding: 14px;
+}
+.dg__panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+.dg__panel-count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.dg__controls {
+  margin-top: 12px;
+}
+.dg__controls--top {
+  margin-top: 0;
+}
+.dg__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  margin-top: 14px;
+}
+@media (max-width: 900px) {
+  .dg__grid {
+    grid-template-columns: 1fr;
+  }
+}
+.dg__side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ---------- pipeline ---------- */
+.dg__pipe-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.dg__pipe-head .dg__panel-head {
+  margin-bottom: 0;
+}
+.dg__pipe-head .dg__panel-count {
+  margin-bottom: 12px;
+}
+.dg__pipe {
+  display: grid;
+  grid-template-columns: auto 22px minmax(0, 1fr) 22px auto 22px auto;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+@media (max-width: 900px) {
+  .dg__pipe {
+    grid-template-columns: 1fr;
+  }
+  .dg__arrow {
+    display: none;
+  }
+}
+.dg__arrow {
+  height: 1px;
+  background: linear-gradient(90deg, var(--line), var(--accent-line));
+  position: relative;
+}
+.dg__arrow::after {
+  content: '';
+  position: absolute;
+  right: -1px;
+  top: -3px;
+  border: 3.5px solid transparent;
+  border-left-color: var(--accent);
+}
+.dg__pipe-cities {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dg__city {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--ink-850);
+  color: var(--text);
+  cursor: pointer;
+  min-width: 190px;
+  transition: border-color 0.16s ease;
+}
+.dg__city:hover {
+  border-color: var(--accent-line);
+}
+.dg__city--on.dg__city--1 {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.dg__city--on.dg__city--2 {
+  border-color: var(--magenta);
+  background: var(--magenta-soft);
+}
+.dg__city-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-strong);
+}
+.dg__city-meta {
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+.dg__partitions {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  height: 92px;
+  align-items: end;
+}
+.dg__partition {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-end;
+  height: 100%;
+}
+.dg__partition-bar {
+  display: block;
+  border-radius: 4px 4px 0 0;
+  background: var(--line);
+  transition: height 0.12s linear;
+}
+.dg__partition--1 .dg__partition-bar {
+  background: var(--accent);
+}
+.dg__partition--2 .dg__partition-bar {
+  background: var(--magenta);
+}
+.dg__partition-lab {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  text-align: center;
+  margin-top: 4px;
+}
+.dg__partition-off {
+  font-size: 9.5px;
+  color: var(--text-faint);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.dg__streams {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--accent-line);
+  background:
+    radial-gradient(200px 80px at 0% 0%, var(--accent-soft), transparent 70%),
+    var(--ink-850);
+  min-width: 180px;
+}
+.dg__streams-name {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--accent);
+}
+.dg__outputs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dg__out {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--ink-850);
+}
+.dg__out b {
+  color: var(--ok);
+  margin-left: 6px;
+}
+.dg__out--warn b {
+  color: var(--warn);
+}
+
+/* ---------- geo ---------- */
+.dg__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  background: var(--ink-850);
+  cursor: crosshair;
+  user-select: none;
+}
+.dg__fence {
+  fill: rgba(61, 240, 255, 0.03);
+  stroke: rgba(61, 240, 255, 0.2);
+  stroke-dasharray: 4 5;
+}
+.dg__drv--free {
+  fill: var(--text-dim);
+}
+.dg__drv--claimed {
+  fill: rgba(61, 240, 255, 0.45);
+}
+.dg__drv--cand {
+  fill: var(--accent);
+}
+.dg__drv--taken {
+  fill: var(--warn);
+}
+.dg__drv--won {
+  fill: var(--accent);
+  stroke: var(--text-strong);
+  stroke-width: 1.5;
+}
+.dg__ring {
+  fill: rgba(61, 240, 255, 0.05);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+.dg__ring--spent {
+  fill: none;
+  stroke-dasharray: 4 4;
+  opacity: 0.4;
+}
+.dg__pin line {
+  stroke: var(--magenta);
+  stroke-width: 1.5;
+}
+.dg__pin circle {
+  fill: var(--magenta);
+}
+.dg__pin text {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  fill: var(--magenta);
+}
+.dg__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 8px 2px 0;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.dg__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.dg__sw {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.dg__sw--free {
+  background: var(--text-dim);
+}
+.dg__sw--claimed {
+  background: rgba(61, 240, 255, 0.45);
+}
+.dg__sw--cand {
+  background: var(--accent);
+}
+.dg__sw--taken {
+  background: var(--warn);
+}
+.dg__trace {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 90px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.dg__trace-empty {
+  font-size: 13px;
+  color: var(--text-faint);
+  line-height: 1.5;
+}
+.dg__trace-line {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+.dg__trace-kind {
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10px;
+  padding-top: 1px;
+}
+.dg__trace-line--claimed {
+  color: var(--accent);
+}
+.dg__trace-line--taken {
+  color: var(--warn);
+}
+.dg__trace-line--stale {
+  color: var(--magenta);
+}
+.dg__trace-line--grow {
+  color: var(--text);
+}
+.dg__trace-line--matched {
+  color: var(--ok);
+}
+.dg__trace-line--unmatched {
+  color: var(--warn);
+}
+.dg__verdict {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--accent-line);
+  background: var(--accent-soft);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+}
+.dg__verdict--warn {
+  border-color: rgba(255, 207, 92, 0.5);
+  background: rgba(255, 207, 92, 0.1);
+}
+
+/* ---------- shards ---------- */
+.dg__tanks {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.dg__tank {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.dg__tank-glass {
+  width: 100%;
+  height: 120px;
+  border-radius: 8px 8px 12px 12px;
+  border: 1px solid var(--line);
+  background: var(--ink-850);
+  display: flex;
+  flex-direction: column-reverse;
+  overflow: hidden;
+}
+.dg__tank-fill {
+  display: block;
+  width: 100%;
+}
+.dg__tank-fill--1 {
+  background: linear-gradient(180deg, var(--accent), rgba(61, 240, 255, 0.55));
+}
+.dg__tank-fill--2 {
+  background: linear-gradient(180deg, var(--magenta), rgba(255, 43, 208, 0.55));
+}
+.dg__tank-name {
+  font-size: 13px;
+  color: var(--text-strong);
+  margin-top: 4px;
+}
+.dg__tank-meta {
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+/* ---------- load and stats ---------- */
+.dg__speeds {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--ink-850);
+  margin-left: auto;
+}
+.dg__speed {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.dg__speed--on {
+  background: var(--accent);
+  color: var(--ink-900);
+}
+.dg__progress {
+  height: 4px;
+  margin-top: 12px;
+  border-radius: 999px;
+  background: var(--ink-700);
+  overflow: hidden;
+}
+.dg__progress span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--magenta));
+  transition: width 0.1s linear;
+}
+.dg__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.dg__stats--roll {
+  margin-top: 0;
+}
+.dg__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line-soft);
+  background: var(--ink-850);
+}
+.dg__stat--hero {
+  border-color: var(--accent-line);
+  background:
+    radial-gradient(240px 120px at 0% 0%, var(--accent-soft), transparent 70%),
+    var(--ink-850);
+}
+.dg__stat-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.dg__stat-val {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: clamp(20px, 3vw, 26px);
+  line-height: 1.1;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+.dg__stat--hero .dg__stat-val {
+  color: var(--accent);
+}
+.dg__stat-val small {
+  font-size: 0.5em;
+  color: var(--text-faint);
+  margin-left: 5px;
+  font-weight: 500;
+}
+.dg__stat-ref {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-faint);
+  line-height: 1.4;
+}
+
+/* ---------- rollout ---------- */
+.dg__rollout {
+  margin-top: 14px;
+}
+.dg__roll {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .dg__roll {
+    grid-template-columns: 1fr;
+  }
+}
+.dg__deploys {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.dg__deploy {
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line-soft);
+  background: var(--ink-850);
+}
+.dg__deploy-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.dg__deploy-name {
+  font-size: 12px;
+  color: var(--text-strong);
+}
+.dg__deploy-meta {
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+.dg__pods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 34px;
+}
+.dg__pod {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--ink-800);
+}
+.dg__pod-name {
+  font-size: 10.5px;
+  color: var(--text);
+}
+.dg__pod-phase {
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.dg__pod--ready {
+  border-color: rgba(61, 220, 145, 0.5);
+}
+.dg__pod--ready .dg__pod-phase {
+  color: var(--ok);
+}
+.dg__pod--pending,
+.dg__pod--starting {
+  border-color: var(--accent-line);
+}
+.dg__pod--starting .dg__pod-phase,
+.dg__pod--pending .dg__pod-phase {
+  color: var(--accent);
+}
+.dg__pod--terminating {
+  border-color: rgba(255, 207, 92, 0.5);
+}
+.dg__pod--terminating .dg__pod-phase {
+  color: var(--warn);
+}
+.dg__pod--gone {
+  opacity: 0.4;
+}
+.dg__events {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.dg__events li {
+  display: flex;
+  gap: 10px;
+}
+.dg__event-at {
+  color: var(--text-faint);
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}

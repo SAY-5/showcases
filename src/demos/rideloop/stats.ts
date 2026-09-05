@@ -1,0 +1,70 @@
+// Latency percentiles and match-rate windows, the numbers the demo summary prints.
+export class LatencyStats {
+  private readonly samples: number[] = [];
+  private sorted: number[] | null = null;
+
+  push(ms: number): void {
+    this.samples.push(ms);
+    this.sorted = null;
+  }
+
+  get count(): number {
+    return this.samples.length;
+  }
+
+  // Nearest-rank percentile, p in [0, 100].
+  percentile(p: number): number | null {
+    if (!this.samples.length) return null;
+    if (!this.sorted) this.sorted = [...this.samples].sort((a, b) => a - b);
+    const rank = Math.max(1, Math.ceil((p / 100) * this.sorted.length));
+    return this.sorted[rank - 1];
+  }
+
+  histogram(buckets: number, bucketMs: number): number[] {
+    const hist = new Array<number>(buckets).fill(0);
+    for (const ms of this.samples) hist[Math.min(buckets - 1, Math.floor(ms / bucketMs))] += 1;
+    return hist;
+  }
+
+  reset(): void {
+    this.samples.length = 0;
+    this.sorted = null;
+  }
+}
+
+// Timestamps of matches; answers the demo's overall rate.
+export class MatchRate {
+  private readonly times: number[] = [];
+  firstRequestAt: number | null = null;
+
+  noteRequest(at: number): void {
+    if (this.firstRequestAt === null || at < this.firstRequestAt) this.firstRequestAt = at;
+  }
+
+  noteMatch(at: number): void {
+    this.times.push(at);
+  }
+
+  get total(): number {
+    return this.times.length;
+  }
+
+  // matches / (last match - first request) * 60, the formula the demo summary uses.
+  perMinute(): number | null {
+    if (this.firstRequestAt === null || this.times.length < 2) return null;
+    const span = this.times[this.times.length - 1] - this.firstRequestAt;
+    return span > 0 ? (this.times.length / span) * 60 : null;
+  }
+
+  // Rate so far, measured against the current time while a run is in progress.
+  perMinuteSoFar(now: number): number | null {
+    if (this.firstRequestAt === null || !this.times.length) return null;
+    const span = now - this.firstRequestAt;
+    return span > 0.5 ? (this.times.length / span) * 60 : null;
+  }
+
+  reset(): void {
+    this.times.length = 0;
+    this.firstRequestAt = null;
+  }
+}

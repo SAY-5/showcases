@@ -3706,6 +3706,17 @@ export const projects: ProjectData[] = [
       "Six-stage job lifecycle from PENDING to ACTIVE, with percent-complete progress exposed through a REST API.",
       "Pre-built PyTorch, TensorFlow, and Bioimaging images (9-13 GB) on CUDA 11.2; instances auto-shutdown on expiration to limit idle cost."
     ],
+<<<<<<< HEAD
+    "demoConcept": "A job tracker that animates a request moving through the six provisioning stages with a progress bar, alongside a worker-pool view showing concurrent jobs and a days-to-minutes time comparison.",
+    "flagshipScore": 9
+  },
+  {
+    "name": "diagkit",
+    "title": "diagkit",
+    "tagline": "Support diagnostic CLI that clusters failure signatures and ranks likely root causes",
+    "summary": "diagkit pulls the logs, traces, and metrics for an incident window, clusters the recurring failure signatures, correlates them with trace errors and metric spikes, and prints the likely root cause as one ranked, explainable answer. A Go collector simulates a four-service topology (gateway to orders to payments to db) from a seeded PRNG and normalizes each log message into a template so recurring failures group into signature clusters; a Python analyzer consumes the resulting incident bundle and scores each service from signature density, metric spikes, and dependency propagation. Same seed, same scenario, same answer, every time.",
+    "category": "Developer Tools",
+=======
     "demoConcept": "A job tracker animates a request through the six provisioning stages with a progress bar, beside a worker-pool view of concurrent jobs and a days-to-minutes comparison.",
     "flagshipScore": 9,
     "isFlagship": false
@@ -3717,11 +3728,134 @@ export const projects: ProjectData[] = [
     "summary": "Incident Root Cause Ranker is a support diagnostic CLI for distributed services: two halves sharing one versioned JSON incident bundle. The Go collector simulates a four-service topology (gateway, orders, payments, db) over an incident window, emitting structured logs, distributed traces, and per-service metrics from a seeded PRNG and normalizing log messages into templates so recurring failures group into signature clusters. The Python analyzer ranks each service with an explainable score built from signature density, metric spikes, and dependency propagation, and prints the likely root cause with its evidence. Runs are deterministic per seed and scenario.",
     "category": "Infra and Distributed",
     "language": "Go",
+>>>>>>> origin/main
     "stack": [
       "Go",
       "Python",
       "Click",
       "pytest",
+<<<<<<< HEAD
+      "Docker",
+      "Make"
+    ],
+    "highlights": [
+      "The two halves interoperate through a single versioned JSON document, the incident bundle: the schema is defined once on each side and both check the version, so the Go collector and Python analyzer stay honest with each other",
+      "On the injected payments outage the ranking names payments correctly and says why: it owns the densest error signature, its p95 latency spiked 4.2x baseline, its error rate peaked at 74 percent, and 100 percent of entry errors trace through it",
+      "Log fingerprinting normalizes each message into a template so 617 raw log lines collapse into 4 recurring signatures, turning a wall of noise into a countable, rankable list",
+      "The whole pipeline runs against a seeded, simulated distributed system, so payments-outage, db-slowdown, and healthy scenarios are reproducible with no real cluster; the Go side is standard library only and CI exercises both halves on every push"
+    ],
+    "demoConcept": "An incident-diagnosis console: raw log lines stream in and collapse into normalized signature templates with counts, services light up in a ranked root-cause list with each score explained, and a scenario toggle flips the injected fault so a different service deterministically becomes the culprit",
+    "flagshipScore": 8
+  },
+  {
+    "name": "snapvault",
+    "title": "snapvault",
+    "tagline": "Distributed backup and rapid-restore with content-addressed dedup and hash-verified parallel recovery",
+    "summary": "snapvault takes incremental snapshots of a dataset using content-addressed storage, replicates the resulting chunks across simulated storage nodes, and restores them in parallel while verifying integrity through hashing and recovering across node failures. A C++17 engine owns the storage core: a from-scratch SHA-256, a chunker, a deduplicating content store, and snapshot manifests. A Go engine owns the distributed layer: N simulated nodes, replication factor R, deterministic placement seeded by content hash, parallel verified restore, and node-failure recovery. The two share one on-disk format that is the single source of truth.",
+    "category": "Systems and C++",
+    "stack": [
+      "C++17",
+      "Go",
+      "CMake",
+      "CTest",
+      "SHA-256",
+      "Make"
+    ],
+    "highlights": [
+      "Content addressing deduplicates for free: the demo dataset's first snapshot stores only 33 of 63 chunk references because an identical file collapses into existing chunks, and the incremental snapshot after editing one file writes exactly 1 new chunk",
+      "The Go layer distributes 33 unique chunks across 5 nodes at replication factor 3 (99 chunk copies) with placement derived deterministically from each chunk's content hash, so runs are fully reproducible",
+      "After a node is marked down, the parallel restore fetches every chunk from surviving replicas, re-hashes each on arrival against its content address, and the restored tree matches the original byte-for-byte",
+      "The shared chunk-plus-manifest format is written by C++ and read by Go, pinned down in FORMAT.md and enforced by CTest suites on one side and race-enabled Go tests on the other"
+    ],
+    "demoConcept": "A backup pipeline you can drive end to end: files shatter into content-hashed chunks that visibly collapse in the dedup store, replicas fan out across a node grid, and failing a node kicks off a parallel restore with a verification tick per chunk and a byte-for-byte final verdict",
+    "flagshipScore": 8
+  },
+  {
+    "name": "rideloop",
+    "title": "rideloop",
+    "tagline": "Ride request and dispatch platform with a geohash-partitioned driver index, TTL expiry, and atomic nearest-driver claims",
+    "summary": "rideloop is three Python microservices behind a React rider map. driver_location ingests driver pings into a DynamoDB table partitioned by geohash cell (precision 5) with a TTL attribute, so answering who is near this point is a handful of key lookups on the center cell and its eight neighbors instead of a table scan. ride_request writes trips and their event trail to PostgreSQL. dispatch runs a matcher loop that locks requested trips with FOR UPDATE SKIP LOCKED, queries available drivers nearest first, claims one with a conditional update (status = available AND ttl > now), and doubles the search radius from 500 m up to 4 km when a ring has nobody claimable. Synthetic traffic drives it at about 600 rides a minute on a laptop.",
+    "category": "Infra and Distributed",
+    "stack": [
+      "Python",
+      "DynamoDB",
+      "PostgreSQL",
+      "React"
+    ],
+    "highlights": [
+      "Geohash prefix as the partition key: a precision-5 cell is a bounding box, a 3 x 3 block of cells covers a 4.9 km radius from any point in the center cell, and nearby queries read exactly those nine partitions with a precision-6 subcell filter for small radii",
+      "Every ping sets ttl = now + POSITION_TTL_SECONDS and the read side treats it as authoritative: nearby queries and the claim condition both filter ttl > now, so a driver that stops reporting is invisible the second its TTL passes even though DynamoDB deletes lazily",
+      "Matching is a conditional claim, not a read-then-write: the dispatcher tries the nearest candidate with status = available AND ttl > now, moves to the next on failure, and doubles the radius (500 m, 1 km, 2 km, 4 km) when a ring is empty; concurrent matchers cannot double-book a driver",
+      "make demo seeds 300 drivers and submits 600 rides at 10 per second; every figure is read back from the running system: 600 of 600 matched, 601 matches per minute, p50 match latency 59 ms and p95 101 ms, and a silenced driver visible after 3 s and gone after the 20 s TTL"
+    ],
+    "demoConcept": "A live city map: drivers move across a geohash grid, you drop a pickup pin and watch the matcher read the nine surrounding cells, expand its radius ring by ring and claim the nearest driver atomically, while a silenced driver ages out at its TTL and the matches-per-minute counter settles on the measured 601",
+    "flagshipScore": 8
+  },
+  {
+    "name": "modelgate",
+    "title": "modelgate",
+    "tagline": "PyTorch ETA model serving with strict input checks, shadow runs, Prometheus metrics, and zero-drop version swaps",
+    "summary": "modelgate serves a small PyTorch MLP that estimates trip ETA from distance, time of day, day of week, pickup zone, traffic index, and rain. A FastAPI layer validates every input before a tensor is built and returns 422 with a per-field reason, counted by reason. A model registry holds a primary, an optional shadow whose divergence is recorded on every request while the client always gets the primary answer, and a weighted canary with automatic rollback. Concurrent calls are micro-batched into one padded forward pass so a request gets bit-identical output alone or in a full batch. Promotion loads and warms the candidate off the request path and replaces the primary reference in O(1) under a lock; in-flight requests finish on the model they started with. Traffic, latency, rejections, shadow divergence, swaps, and dropped requests are exported to Prometheus with a provisioned Grafana dashboard.",
+    "category": "Data and ML",
+    "stack": [
+      "Python",
+      "PyTorch",
+      "FastAPI",
+      "Prometheus"
+    ],
+    "highlights": [
+      "Input validation runs before any tensor exists: types, ranges, known zones, finite floats, no unknown fields; rejections return 422 with a per-field reason and increment a rejection counter labeled by that reason",
+      "Shadow inference runs the candidate on every request next to the primary and records the divergence, so a version can be judged on live traffic before it answers a single client: the demo run reports n=1000, mean |d| 2.29 min, p95 |d| 6.35 min",
+      "The version swap is a pointer replacement under a lock after the candidate is loaded and warmed off the request path; the 200 rps load test shows 4000 of 4000 requests succeeded, 0 dropped, with the per-second split flipping from v1 to v2 inside one second",
+      "Every forward pass is padded to a fixed row count, so micro-batching changes throughput but never the answer, and the offline replay harness reproduces logged answers bit for bit (checked 300, mismatches 0)"
+    ],
+    "demoConcept": "A request builder that shows exactly which field a 422 is blaming, a shadow readout that scores v2 against v1 on the same inputs, and a live request stream where pressing Promote flips the serving version from v1 to v2 in a single tick while the dropped counter stays pinned at 0",
+    "flagshipScore": 8
+  },
+  {
+    "name": "dispatchgrid",
+    "title": "dispatchgrid",
+    "tagline": "Kafka Streams ride matching with Redis geospatial atomic claims, city-keyed MySQL shards, and zero-downtime Kubernetes rollouts",
+    "summary": "dispatchgrid is a marketplace matching service in Java 21 and Spring Boot 3. rider-request-service writes each trip to the MySQL shard for its city (shard = floorMod(city_id, N)) and produces ride.requested keyed by city id. driver-location-service GEOADDs positions into a per-city Redis GEO index with a heartbeat TTL so silent drivers age out. matching-service is a Kafka Streams topology that consumes ride-requests, runs GEOSEARCH nearest first, expands the radius when a ring is empty, and claims the driver with a Lua SET NX so two matchers cannot take the same driver, then emits ride-matches or ride-unmatched. Every topic is keyed by city with six partitions, so a city's events stay ordered while different cities are processed in parallel. The three services run on Kubernetes with readiness, liveness, and startup probes, a preStop drain, and RollingUpdate with maxUnavailable 0.",
+    "category": "Infra and Distributed",
+    "stack": [
+      "Java",
+      "Kafka",
+      "MySQL",
+      "Redis",
+      "Kubernetes"
+    ],
+    "highlights": [
+      "Topics keyed by city id give ordering per city and parallelism across cities for free: the Streams topology processes each partition independently, and the load run shows 603 rides across two cities all matched, 0 unmatched",
+      "The driver claim is a single Redis Lua script doing SET NX on the driver key, so nearest-first matching under concurrent matchers cannot double-book; the radius expands ring by ring only when GEOSEARCH returns nobody claimable",
+      "CityShardRouter maps city_id to a shard with floorMod and each service holds one Hikari pool per shard with Flyway migrations applied to every shard at startup; GET /rides/stats counts rows per shard and shows city 2 on shard 0 and city 1 on shard 1",
+      "Measured on a 6 CPU VM: 603 matches per minute with match latency p50 14 ms, p95 53 ms, and the kind rollout proof changes an environment variable on all three Deployments mid-load and asserts zero HTTP errors from the generator"
+    ],
+    "demoConcept": "Two cities feed ride requests into Kafka partitions keyed by city, a Streams matcher pulls each one and claims the nearest driver from a Redis GEO index with expanding radius, trips settle into shard tanks by city, and a rolling-update panel replaces pods one at a time with the error counter pinned at 0",
+    "flagshipScore": 8
+  },
+  {
+    "name": "failsafe",
+    "title": "failsafe",
+    "tagline": "Resilient API gateway with token-bucket rate limiting, circuit breakers, retries with backoff and failover, proven by chaos runs with zero client-visible failures",
+    "summary": "failsafe is a Python API gateway (FastAPI, httpx, uvicorn) that sits in front of a set of upstream replicas and keeps client requests succeeding while those replicas are rate limited, timing out, crashing, or being killed outright. Each request goes through route matching, a per-key token bucket with exact refill math and Retry-After on 429, and a forwarder that retries idempotent requests with exponential backoff and jitter and fails over across healthy replicas. Every replica has its own circuit breaker (closed, open, half-open) driven by a failure-rate window with bounded probes, plus an adaptive AIMD concurrency limit that steers traffic away from a saturated replica. Active health checks and EndpointSlice discovery keep the pool current, Prometheus counts every decision, and the Kubernetes manifests roll with zero unavailable pods.",
+    "category": "Infra and Distributed",
+    "stack": [
+      "Python",
+      "Docker",
+      "Kubernetes",
+      "Prometheus"
+    ],
+    "highlights": [
+      "Token buckets refill continuously rather than per tick, so a client at exactly its rate never sees a 429 and a burst above capacity gets an exact Retry-After computed from the deficit",
+      "A breaker per replica moves closed to open on a failure-rate window or a run of consecutive failures, waits a cooldown, and allows a bounded number of half-open probes before closing again, so a dead replica stops receiving traffic instead of consuming retry budget",
+      "Retries with backoff and jitter apply only to idempotent requests, and failover picks a different healthy replica for each attempt; an in-process test drives 1200 requests while one replica is killed and another hangs",
+      "make chaos drives 150 rps for 45 s while SIGKILLing upstream containers: 6751 requests, 6751 successes, 4 kills, 5 retries, 5 failovers, and 0 client-visible failures, with the same assertion passing on a kind cluster across 4 pod kills"
+    ],
+    "demoConcept": "A gateway fanning requests out to three replicas: watch the token bucket drain and refill, step a breaker through closed, open, and half-open, then start a chaos run that kills replicas under load while the retry and failover counters climb and client failures stay at 0",
+    "flagshipScore": 8
+  }
+=======
       "uv",
       "Docker"
     ],
@@ -3758,6 +3892,7 @@ export const projects: ProjectData[] = [
     "flagshipScore": 8,
     "isFlagship": true
   },
+>>>>>>> origin/main
 ];
 
 export const projectByName: Record<string, ProjectData> = Object.fromEntries(
