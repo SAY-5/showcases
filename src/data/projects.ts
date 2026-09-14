@@ -3860,7 +3860,7 @@ export const projects: ProjectData[] = [
     "language": "Python",
     "stack": [
       "Python",
-      "Anthropic API",
+      "Tool Calling",
       "Terraform",
       "AWS",
       "DynamoDB",
