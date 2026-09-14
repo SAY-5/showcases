@@ -109,7 +109,7 @@ export default function ExpertloopDemo() {
         <div className="el__panel-head">
           Compile, note lines to cited steps
           <span className="el__panel-count">
-            {totals.steps} steps, {totals.citations} citations, {totals.cited}/{totals.steps} steps cited
+            {totals.steps} steps, {totals.citations} citations as ingested, {totals.cited}/{totals.steps} steps cited
           </span>
         </div>
         <div className="el__tabs" role="group" aria-label="Note">
