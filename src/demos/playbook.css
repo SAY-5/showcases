@@ -115,6 +115,11 @@
   background: var(--ink-850);
   min-width: 0;
 }
+@media (min-width: 900px) {
+  .pl__stat[data-hero='true'] {
+    grid-column: span 2;
+  }
+}
 .pl__stat[data-hero='true'] {
   border-color: var(--accent-line);
   background:
