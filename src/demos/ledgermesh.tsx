@@ -15,7 +15,7 @@ import { CHAOS, type BreakerSnap, type ServiceSnap, type Snap } from './ledgerme
 // or run the 60 s chaos load; the seeded run reports the measured counts.
 
 const SPEEDS = [1, 2, 4, 8];
-const REAL = { orders: 1200, confirmed: 1162, cancelled: 38, failed: 0, kills: 3, p50: 12825, p95: 36859 };
+const REAL = { orders: 1200, confirmed: 1162, cancelled: 38, failed: 0, kills: 3, killTimes: 'inventory @16s, payment @37s, inventory @49s', p50: 12825, p95: 36859 };
 const STATES = ['CLOSED', 'OPEN', 'HALF_OPEN'] as const;
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -134,7 +134,7 @@ export default function LedgermeshDemo() {
         <section className="lm__panel" aria-label="Saga stream">
           <div className="lm__panel-head">
             Saga stream
-            <span className="lm__panel-count">latest orders to reach a terminal state</span>
+            <span className="lm__panel-count">latest orders to reach a terminal state, virtual-clock times</span>
           </div>
           <ul className="lm__orders mono">
             {snap.recent.length === 0 && <li className="lm__empty">Settled orders appear here once the run starts.</li>}
@@ -212,8 +212,8 @@ export default function LedgermeshDemo() {
         </div>
         <p className="lm__track-labels mono">
           {snap.kills.length === 0
-            ? `scheduled: ${snap.plan.map((k) => `${short(k.service)} @${k.at / 1000}s`).join(', ')}`
-            : `kills: ${snap.kills.map((k) => `${short(k.service)} @${Math.round(k.at / 1000)}s, ready @${(k.readyAt / 1000).toFixed(1)}s`).join('; ')}`}
+            ? `simulated schedule:${snap.plan.map((k) => `${short(k.service)} @${k.at / 1000}s`).join(', ')}`
+            : `simulated kills:${snap.kills.map((k) => `${short(k.service)} @${Math.round(k.at / 1000)}s, ready @${(k.readyAt / 1000).toFixed(1)}s`).join('; ')}`}
         </p>
         <div className="lm__stats">
           <div className="lm__stat lm__stat--hero" data-bad={st.failed > 0}>
@@ -236,6 +236,9 @@ export default function LedgermeshDemo() {
             refText={`virtual clock; measured ${(REAL.p50 / 1000).toFixed(1)} / ${(REAL.p95 / 1000).toFixed(1)} s on the Compose stack`}
           />
         </div>
+        <p className="lm__note mono">
+          Printed by the simulation on a virtual clock. Measured run (README): {REAL.orders} orders, {REAL.confirmed} confirmed, {REAL.cancelled} cancelled for stock, {REAL.failed} failed or stuck, kills {REAL.killTimes}. In the seeded schedule the payment kill lands at 30 s, against 37 s in the measured run.
+        </p>
         <pre className="lm__summary mono">{snap.summary}</pre>
         <AnimatePresence>
           {snap.phase === 'done' && (

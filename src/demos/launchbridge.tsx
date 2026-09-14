@@ -246,7 +246,14 @@ export default function LaunchbridgeDemo() {
             refText={`virtual ms; measured ${REAL.p50} / ${REAL.p95} ms on the Compose stack`}
           />
         </div>
-        {b?.phase === 'done' && <pre className="lb__summary mono">{b.lines.join('\n')}</pre>}
+        {b?.phase === 'done' && (
+          <>
+            <p className="lb__note mono">
+              Printed by the simulation on virtual clocks. The counts match the README run; its latencies do not. Measured dispatch p50 {REAL.p50} ms, p95 {REAL.p95} ms.
+            </p>
+            <pre className="lb__summary mono">{b.lines.join('\n')}</pre>
+          </>
+        )}
         <AnimatePresence>
           {b?.phase === 'done' && (
             <motion.div
@@ -322,6 +329,7 @@ function Timeline({ t }: { t: TimelineSnap }) {
           </li>
         ))}
       </ol>
+      {t.attempts.length > 0 && <p className="lb__note mono">Round trips and backoffs run on the virtual clock.</p>}
     </div>
   );
 }
