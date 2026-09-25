@@ -1,9 +1,18 @@
-// External store around one lab. The demo script only advances while a
-// component holds playback open; every mutation bumps a version.
+// External store around one lab. The lab is built on first access rather than
+// at import, so the other routes of the site do not pay for its compiles and
+// dry run. The demo script only advances while a component holds playback
+// open; every mutation bumps a version.
 import { useSyncExternalStore } from 'react';
 import { Lab } from './lab';
 
-export const store = { lab: new Lab() };
+let lab: Lab | null = null;
+
+export const store = {
+  get lab(): Lab {
+    if (lab === null) lab = new Lab();
+    return lab;
+  },
+};
 
 let version = 0;
 const listeners = new Set<() => void>();
@@ -27,7 +36,7 @@ export function useStoreVersion(): number {
 }
 
 export function resetStore(): void {
-  store.lab = new Lab();
+  lab = new Lab();
   touch();
 }
 
