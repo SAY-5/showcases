@@ -28,15 +28,17 @@ keyed by file basename, which matches the project name in the dataset.
 
 ## Develop
 
+Use Node.js 20.19+, 22.13+, or 24+ (even-numbered LTS releases).
+
 ```
-npm install
+npm ci
 npm run dev
 ```
 
 ## Build
 
 ```
-npm install
+npm ci
 npm run build
 ```
 
