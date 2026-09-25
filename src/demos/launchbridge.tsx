@@ -5,32 +5,33 @@ import './launchbridge.css';
 import { bridge, resetBridge, startClock, touch, useBridgeVersion } from './launchbridge/state';
 import { BENCH, BURST, type Tamper, type TimelineSnap } from './launchbridge/sim';
 import { DESTINATIONS } from './launchbridge/delivery';
+import { COMPUTED_LABEL, MEASURED, MEASURED_LABEL, MEASURED_LATENCY } from './launchbridge/provenance';
+import { STEP_LABELS, STEP_ORDER } from './launchbridge/service';
 
 // In-browser launchbridge: the webhook service, its delivery worker and the
-// receiver fake on virtual clocks. Requests are signed with HMAC-SHA256 over
-// "<unix seconds>.<body>", verified step by step (timestamp, 300 s window,
-// header, constant-time digest, signature not seen before), then recorded in a
-// ledger keyed on (source, event_key) so a re-send is deduplicated. Deliveries
-// retry 5xx with doubling backoff and 20 percent jitter to a bounded attempt
-// count, failed ones replay as a new series with the same idempotency key, and
-// the 300-event burst reports the same counts the README prints.
+// receiver fake on virtual clocks. A body over 1 MB is refused with 413 before
+// anything else is read. Requests are signed with HMAC-SHA256 over
+// "<unix seconds>.<body>" and verified step by step (timestamp, 300 s window,
+// header, constant-time digest), the signature goes into the signature_nonces
+// store so a repeat is 409 whether its first arrival was accepted or
+// deduplicated, and (source, event_key) goes into the processed_events ledger
+// so a re-send is deduplicated. Routing rules from destinations.yaml decide
+// which destinations an event reaches and each delivery carries that
+// destination's transformed payload. Deliveries retry 5xx with doubling
+// backoff and 20 percent jitter to a bounded attempt count, failed ones replay
+// as a new series with the same idempotency key, and the 300-event burst
+// reports the same counts the README prints. The per-destination rate limit
+// and circuit breaker gate is not ported, and the page says so.
 
 const SPEEDS = [1, 2, 4];
-const REAL = { received: 300, deduplicated: 50, delivered: 250, retried: 60, failed: 20, replayed: 20, rejections: 3, p50: 1987.5, p95: 7828.5 };
-const STEP_ORDER = ['timestamp', 'window', 'header', 'hmac', 'nonce', 'dedup'] as const;
-const STEP_NAMES: Record<(typeof STEP_ORDER)[number], string> = {
-  timestamp: 'X-Timestamp is unix seconds',
-  window: `|now - timestamp| <= ${BENCH.tolerance} s`,
-  header: 'X-Signature starts with sha256=',
-  hmac: 'HMAC-SHA256 over "<timestamp>.<body>" matches',
-  nonce: 'signature not accepted before',
-  dedup: 'ledger ON CONFLICT (source, event_key)',
-};
+const REAL = MEASURED.counts;
+const STEP_INDEX = (id: string) => STEP_ORDER.indexOf(id as (typeof STEP_ORDER)[number]);
 const PHASES = ['first-pass', 'duplicates', 'rejections', 'settling', 'replay', 'resettling', 'done'] as const;
+const NO_TAMPER: Tamper = { flipByte: false, wrongSecret: false, stale: false, oversize: false };
 const ease = [0.22, 1, 0.36, 1] as const;
 
 function statusText(status: number, error: string | null, deliveries: number): string {
-  if (status === 202) return `202 Accepted, ${deliveries} deliveries enqueued`;
+  if (status === 202) return `202 Accepted, ${deliveries} ${deliveries === 1 ? 'delivery' : 'deliveries'} enqueued`;
   if (status === 200) return '200 OK, deduplicated: true, no deliveries';
   return `${status} ${error ?? ''}`;
 }
@@ -39,7 +40,7 @@ export default function LaunchbridgeDemo() {
   useBridgeVersion();
   const reduce = useReducedMotion();
   const [speed, setSpeed] = useState(1);
-  const [tamper, setTamper] = useState<Tamper>({ flipByte: false, wrongSecret: false, stale: false });
+  const [tamper, setTamper] = useState<Tamper>(NO_TAMPER);
 
   useEffect(() => startClock(speed), [speed]);
 
@@ -48,10 +49,16 @@ export default function LaunchbridgeDemo() {
   const failedStep = last?.steps.find((s) => !s.ok)?.id;
   const b = snap.burst;
   const bs = b?.stats;
+  const open = bs ? bs.deliveries.pending + bs.deliveries.in_progress : 0;
+  const burstStatus = !b ? 'idle, the burst has not run' : b.phase === 'done' ? `done, ${b.posted} posted, ${bs?.deliveries.delivered ?? 0} delivered` : `${b.phase}, ${b.posted} posted, ${open} open`;
   const passed = b?.phase === 'done' && b.checks.every((c) => c.ok);
   const act = (fn: () => void) => () => {
     fn();
     touch();
+  };
+  const reset = () => {
+    setTamper(NO_TAMPER);
+    resetBridge();
   };
   const toggle = (key: keyof Tamper) => setTamper((t) => ({ ...t, [key]: !t[key] }));
 
@@ -60,16 +67,20 @@ export default function LaunchbridgeDemo() {
       <span className="demo__tag">Webhook bridge</span>
       <h3 className="demo__title">launchbridge</h3>
       <p className="demo__lede">
-        Sign a webhook and watch it pass each verification step, then tamper with it: flip one byte after signing, sign
-        with the wrong secret, backdate the timestamp an hour, or replay a captured request. Re-send an event id and the
-        ledger deduplicates it. Make the destinations answer 503 to see bounded retries with jittered backoff end in
-        failed, replay them once repaired, then push the {BURST.total}-event burst through the same path.
+        Sign a webhook and watch it pass each verification step, then tamper with it: pad the body past the limit, flip
+        one byte in transit, sign with the wrong secret, backdate the timestamp an hour, or replay a captured request.
+        Re-send an event id and the ledger deduplicates it; replay either request and the nonce store refuses it. Routing
+        rules decide which destinations the event reaches. Make the destinations answer 503 to see bounded retries with
+        jittered backoff end in failed, replay them once repaired, then push the {BURST.total}-event burst through the
+        same path.
       </p>
 
       <section className="lb__panel" aria-label="Signed webhook">
         <div className="lb__panel-head">
           POST /webhooks/{BENCH.source}
-          <span className="lb__panel-count">secret orders-dev-secret, tolerance {BENCH.tolerance} s, fans out to crm and billing</span>
+          <span className="lb__panel-count">
+            secret orders-dev-secret, tolerance {BENCH.tolerance} s, body limit {BENCH.bodyLimit.toLocaleString('en-US')} bytes; routed by source, event type and predicates
+          </span>
         </div>
         <div className="lb__bench">
           <div className="lb__compose">
@@ -77,7 +88,17 @@ export default function LaunchbridgeDemo() {
             <pre className="lb__code mono">{snap.nextPayload}</pre>
             <div className="lb__checks mono">
               <label>
-                <input type="checkbox" checked={tamper.flipByte} onChange={() => toggle('flipByte')} /> flip one byte after signing
+                <input type="checkbox" checked={snap.typed} onChange={act(() => bridge().setTyped(!bridge().typed))} /> payload carries type {BENCH.eventType} (billing routes on
+                order.*)
+              </label>
+            </div>
+            <span className="lb__label lb__label--gap">tamper after signing</span>
+            <div className="lb__checks mono">
+              <label>
+                <input type="checkbox" checked={tamper.oversize} onChange={() => toggle('oversize')} /> pad the body past {BENCH.bodyLimit.toLocaleString('en-US')} bytes
+              </label>
+              <label>
+                <input type="checkbox" checked={tamper.flipByte} onChange={() => toggle('flipByte')} /> flip one byte in transit
               </label>
               <label>
                 <input type="checkbox" checked={tamper.wrongSecret} onChange={() => toggle('wrongSecret')} /> sign with the wrong secret
@@ -91,7 +112,7 @@ export default function LaunchbridgeDemo() {
                 Sign and send
               </button>
               <button className="demo__btn demo__btn--ghost lb__small" onClick={act(() => bridge().replay())} disabled={!snap.canReplay}>
-                Replay last accepted request
+                Replay last request
               </button>
               <button className="demo__btn demo__btn--ghost lb__small" onClick={act(() => bridge().resend())} disabled={!snap.canReplay}>
                 Re-send same event id
@@ -128,18 +149,31 @@ export default function LaunchbridgeDemo() {
                 const state = !step ? 'skipped' : step.ok ? 'ok' : 'fail';
                 return (
                   <li key={id} data-state={last ? state : 'idle'}>
-                    <span className="lb__step-n">{i + 1}</span>
-                    <span className="lb__step-name">{step?.label ?? STEP_NAMES[id]}</span>
+                    <span className="lb__step-n">{i}</span>
+                    <span className="lb__step-name">{STEP_LABELS[id]}</span>
                     <span className="lb__step-detail">{step ? step.detail : last ? 'not reached' : ''}</span>
                   </li>
                 );
               })}
             </ol>
             {last && (
-              <p className="lb__response mono" data-ok={last.status < 300}>
+              <p className="lb__response mono" data-ok={last.status < 300} aria-live="polite">
                 {statusText(last.status, last.error, last.deliveries)}
-                {failedStep ? `, stopped at step ${STEP_ORDER.indexOf(failedStep as (typeof STEP_ORDER)[number]) + 1}` : ''}
+                {failedStep ? `, stopped at step ${STEP_INDEX(failedStep)}` : ''}
               </p>
+            )}
+            {last && last.decisions.length > 0 && (
+              <>
+                <span className="lb__label lb__label--gap">registry.route(source, payload)</span>
+                <ul className="lb__routes mono" aria-label="Routing decisions">
+                  {last.decisions.map((d) => (
+                    <li key={d.destination} data-routed={d.routed}>
+                      <span>{d.destination}</span>
+                      <span>{d.routed ? 'matched, delivery enqueued' : d.reason}</span>
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
           </div>
         </div>
@@ -158,7 +192,9 @@ export default function LaunchbridgeDemo() {
             ))}
           </div>
           <ul className="lb__rows mono" aria-label="processed_events ledger">
-            {snap.ledger.length === 0 && <li className="lb__empty">processed_events rows appear here: (source, event_key) unique, signature unique.</li>}
+            {snap.ledger.length === 0 && (
+              <li className="lb__empty">processed_events rows appear here: (source, event_key) unique; signature_nonces, written first, refuses a replayed signature.</li>
+            )}
             {snap.ledger.map((row) => (
               <li key={row.signature}>
                 <span>{BENCH.source}</span>
@@ -174,7 +210,8 @@ export default function LaunchbridgeDemo() {
         <div className="lb__panel-head">
           Delivery attempts
           <span className="lb__panel-count">
-            {DESTINATIONS.map((d) => `${d.name} ${d.retry.maxAttempts} attempts, ${d.retry.baseDelaySeconds} s doubling to ${d.retry.maxDelaySeconds} s`).join('; ')}, jitter 20%
+            {DESTINATIONS.map((d) => `${d.name} ${d.retry.maxAttempts} attempts, ${d.retry.baseDelaySeconds} s doubling to ${d.retry.maxDelaySeconds} s`).join('; ')}, jitter 20%. Rate limit and
+            circuit breaker gate not ported: the service defers rather than fails when either trips, this page never defers.
           </span>
         </div>
         <div className="lb__row">
@@ -188,7 +225,14 @@ export default function LaunchbridgeDemo() {
         <div className="lb__chips" role="group" aria-label="Delivery">
           {snap.choices.length === 0 && <span className="lb__empty">Send an event or run the burst to get deliveries.</span>}
           {snap.choices.map((c) => (
-            <button key={c.id} className="lb__chip mono" data-on={snap.timeline?.id === c.id} data-status={c.status} onClick={act(() => bridge().select(c.id))}>
+            <button
+              key={c.id}
+              className="lb__chip mono"
+              data-on={snap.timeline?.id === c.id}
+              aria-pressed={snap.timeline?.id === c.id}
+              data-status={c.status}
+              onClick={act(() => bridge().select(c.id))}
+            >
               {c.label} <em>{c.status}</em>
             </button>
           ))}
@@ -207,7 +251,7 @@ export default function LaunchbridgeDemo() {
           <button className="demo__btn" onClick={act(() => bridge().startBurst())} disabled={snap.burstRunning}>
             {snap.burstRunning ? 'Running burst' : b?.phase === 'done' ? 'Run burst again' : 'Start burst'}
           </button>
-          <button className="demo__btn demo__btn--ghost" onClick={resetBridge}>
+          <button className="demo__btn demo__btn--ghost" onClick={reset}>
             Reset
           </button>
           <div className="lb__speeds" role="group" aria-label="Burst speed">
@@ -217,6 +261,10 @@ export default function LaunchbridgeDemo() {
               </button>
             ))}
           </div>
+        </div>
+        <div className="lb__status mono" aria-live="polite">
+          <span className="lb__status-dot" data-live={snap.burstRunning} />
+          {burstStatus}
         </div>
         <ol className="lb__phases mono" aria-label="Burst phases">
           {PHASES.map((ph) => {
@@ -233,25 +281,39 @@ export default function LaunchbridgeDemo() {
           <div className="lb__stat lb__stat--hero" data-bad={b?.phase === 'done' && (bs?.deliveries.failed ?? 0) > 0}>
             <span className="lb__stat-label">left failed after replay</span>
             <span className="lb__stat-val">{b?.phase === 'done' ? (bs?.deliveries.failed ?? 0) : '-'}</span>
-            <span className="lb__stat-ref">must be 0; measured 0 of {REAL.delivered} deliveries</span>
+            <span className="lb__stat-ref">
+              must be 0; {MEASURED_LABEL}: {REAL.stillFailed} of {REAL.delivered} deliveries
+            </span>
           </div>
-          <Stat label="received / deduplicated" value={bs?.events.received ?? 0} small={bs?.events.deduplicated ?? 0} refText={`measured ${REAL.received} / ${REAL.deduplicated}; ${b?.posted ?? 0} posted`} />
-          <Stat label="delivered / retried" value={bs?.deliveries.delivered ?? 0} small={bs?.retries ?? 0} refText={`measured ${REAL.delivered} / ${REAL.retried}`} />
-          <Stat label="failed / replayed" value={b?.failedFirstPass ?? bs?.deliveries.failed ?? 0} small={bs?.replays.delivered ?? 0} refText={`measured ${REAL.failed} / ${REAL.replayed}`} />
-          <Stat label="signature rejections" value={bs?.signature_rejections ?? 0} refText={b?.rejectionStatuses.length ? `statuses ${b.rejectionStatuses.join(', ')}` : `measured ${REAL.rejections}`} />
+          <Stat label="received / deduplicated" value={bs?.events.received ?? 0} small={bs?.events.deduplicated ?? 0} refText={`README run ${REAL.received} / ${REAL.deduplicated}; ${b?.posted ?? 0} posted`} />
+          <Stat label="delivered / retried" value={bs?.deliveries.delivered ?? 0} small={bs?.retries ?? 0} refText={`README run ${REAL.delivered} / ${REAL.retried}`} />
+          <Stat label="failed / replayed" value={b?.failedFirstPass ?? bs?.deliveries.failed ?? 0} small={bs?.replays.delivered ?? 0} refText={`README run ${REAL.failed} / ${REAL.replayed}`} />
           <Stat
-            label="dispatch p50 / p95"
+            label="signature rejections"
+            value={bs?.signature_rejections ?? 0}
+            refText={b?.rejectionStatuses.length ? `statuses ${b.rejectionStatuses.join(', ')}; README run ${REAL.signatureRejections}` : `README run ${REAL.signatureRejections}`}
+          />
+          <Stat
+            label="dispatch p50 / p95, simulated"
             value={bs?.latency_ms.p50 ?? 0}
             small={bs?.latency_ms.p95 ?? 0}
-            refText={`virtual ms; measured ${REAL.p50} / ${REAL.p95} ms on the Compose stack`}
+            refText={`virtual ms; ${MEASURED_LABEL}: ${MEASURED_LATENCY}, ${MEASURED.loadCaveat}`}
           />
         </div>
         {b?.phase === 'done' && (
           <>
             <p className="lb__note mono">
-              Printed by the simulation on virtual clocks. The counts match the README run; its latencies do not. Measured dispatch p50 {REAL.p50} ms, p95 {REAL.p95} ms.
+              {COMPUTED_LABEL}. The counts match the README run ({MEASURED_LABEL}); its durations do not: that run measured {MEASURED_LATENCY}, and its README says every duration{' '}
+              {MEASURED.loadCaveat}. 6 of the README run&apos;s 8 checks run here; the smoke suite, /ops/overview and the ingest-rate line are not simulated, so those lines and the
+              two checks that read them are marked not simulated. No delivery here is deferred, because the rate limit and circuit breaker gate is not ported.
             </p>
-            <pre className="lb__summary mono">{b.lines.join('\n')}</pre>
+            <pre className="lb__summary mono">
+              {b.lines.map((line, i) => (
+                <span key={i} className="lb__line">
+                  {line}
+                </span>
+              ))}
+            </pre>
           </>
         )}
         <AnimatePresence>
@@ -265,12 +327,12 @@ export default function LaunchbridgeDemo() {
               transition={{ duration: 0.4, ease }}
             >
               <span className="lb__verdict-head">
-                {passed ? `PASS: ${b.checks.length} of ${b.checks.length} checks, 0 left failed` : 'FAIL: a check did not hold'}
+                {passed ? `PASS: ${b.checks.length} of ${b.checks.length} simulated checks (the README run has ${REAL.checks}), 0 left failed` : 'FAIL: a check did not hold'}
               </span>
               <span className="lb__verdict-text">
-                {bs?.events.received} events received, {bs?.events.deduplicated} deduplicated, {b.failedFirstPass} deliveries failed on
-                the first pass and {bs?.replays.delivered} delivered after the bulk replay. The README run reports {REAL.received} received,{' '}
-                {REAL.deduplicated} deduplicated, {REAL.failed} failed then {REAL.replayed} replayed, and 0 still failed.
+                {bs?.events.received} events received, {bs?.events.deduplicated} deduplicated, {b.failedFirstPass} deliveries failed on the first pass and {bs?.replays.delivered}{' '}
+                delivered after the bulk replay. The README run ({MEASURED_LABEL}) reports {REAL.received} received, {REAL.deduplicated} deduplicated, {REAL.failed} failed then{' '}
+                {REAL.replayed} replayed, and {REAL.stillFailed} still failed.
               </span>
             </motion.div>
           )}
@@ -308,6 +370,10 @@ function Timeline({ t }: { t: TimelineSnap }) {
         </span>
         <b data-status={t.status}>{verdict}</b>
       </div>
+      <p className="lb__tl-payload mono">
+        <span className="lb__faint">{t.transform ? `envelope payload, transformed for ${t.destination} (${t.transform}): ` : 'envelope payload, passed through unchanged: '}</span>
+        {t.payload}
+      </p>
       <div className="lb__track" aria-label="Attempts and backoff, to scale">
         {segments.length === 0 && <span className="lb__empty">Claimed on the next worker poll.</span>}
         {segments.map((s, i) => (
