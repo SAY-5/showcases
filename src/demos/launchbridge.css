@@ -565,6 +565,13 @@
   box-shadow: 0 0 10px var(--accent-glow);
 }
 
+/* five tiles under the hero fill one row from 900 px */
+@media (min-width: 900px) {
+  .lb__stats {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
 /* the summary block wraps with a hanging indent on narrow screens */
 .lb__line {
   display: block;
