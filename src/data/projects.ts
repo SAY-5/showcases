@@ -3767,9 +3767,12 @@ export const projects: ProjectData[] = [
     "category": "Infra and Distributed",
     "stack": [
       "Python",
+      "FastAPI",
       "DynamoDB",
       "PostgreSQL",
-      "React"
+      "Alembic",
+      "React",
+      "Docker"
     ],
     "highlights": [
       "Geohash prefix as the partition key: a precision-5 cell is a bounding box, a 3 x 3 block of cells covers a 4.9 km radius from any point in the center cell, and nearby queries read exactly those nine partitions with a precision-6 subcell filter for small radii",
@@ -3792,7 +3795,9 @@ export const projects: ProjectData[] = [
       "Python",
       "PyTorch",
       "FastAPI",
-      "Prometheus"
+      "Prometheus",
+      "Grafana",
+      "Docker"
     ],
     "highlights": [
       "Input validation runs before any tensor exists: types, ranges, known zones, finite floats, no unknown fields; rejections return 422 with a per-field reason and increment a rejection counter labeled by that reason",
@@ -3812,11 +3817,13 @@ export const projects: ProjectData[] = [
     "summary": "dispatchgrid is a marketplace matching service in Java 21 and Spring Boot 3. rider-request-service writes each trip to the MySQL shard for its city (shard = floorMod(city_id, N)) and produces ride.requested keyed by city id. driver-location-service GEOADDs positions into a per-city Redis GEO index with a heartbeat TTL so silent drivers age out. matching-service is a Kafka Streams topology that consumes ride-requests, runs GEOSEARCH nearest first, expands the radius when a ring is empty, and claims the driver with a Lua SET NX so two matchers cannot take the same driver, then emits ride-matches or ride-unmatched. Every topic is keyed by city with six partitions, so a city's events stay ordered while different cities are processed in parallel. The three services run on Kubernetes with readiness, liveness, and startup probes, a preStop drain, and RollingUpdate with maxUnavailable 0.",
     "category": "Infra and Distributed",
     "stack": [
-      "Java",
-      "Kafka",
+      "Java 21",
+      "Spring Boot",
+      "Kafka Streams",
       "MySQL",
       "Redis",
-      "Kubernetes"
+      "Kubernetes",
+      "Docker"
     ],
     "highlights": [
       "Topics keyed by city id give ordering per city and parallelism across cities for free: the Streams topology processes each partition independently, and the load run shows 603 rides across two cities all matched, 0 unmatched",
@@ -3837,9 +3844,12 @@ export const projects: ProjectData[] = [
     "category": "Infra and Distributed",
     "stack": [
       "Python",
+      "FastAPI",
+      "httpx",
       "Docker",
       "Kubernetes",
-      "Prometheus"
+      "Prometheus",
+      "Grafana"
     ],
     "highlights": [
       "Token buckets refill continuously rather than per tick, so a client at exactly its rate never sees a 429 and a burst above capacity gets an exact Retry-After computed from the deficit",
