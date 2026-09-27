@@ -3813,8 +3813,8 @@ export const projects: ProjectData[] = [
     "name": "dispatchgrid",
     "language": "Java",
     "title": "Streams Ride Matcher",
-    "tagline": "Kafka Streams ride matching with Redis geospatial atomic claims, city-keyed MySQL shards, and zero-downtime Kubernetes rollouts",
-    "summary": "dispatchgrid is a marketplace matching service in Java 21 and Spring Boot 3. rider-request-service writes each trip to the MySQL shard for its city (shard = floorMod(city_id, N)) and produces ride.requested keyed by city id. driver-location-service GEOADDs positions into a per-city Redis GEO index with a heartbeat TTL so silent drivers age out. matching-service is a Kafka Streams topology that consumes ride-requests, runs GEOSEARCH nearest first, expands the radius when a ring is empty, and claims the driver with a Lua SET NX so two matchers cannot take the same driver, then emits ride-matches or ride-unmatched. Every topic is keyed by city with six partitions, so a city's events stay ordered while different cities are processed in parallel. The three services run on Kubernetes with readiness, liveness, and startup probes, a preStop drain, and RollingUpdate with maxUnavailable 0.",
+    "tagline": "Kafka Streams matching service with Redis geospatial claims, city-keyed MySQL shards, and rolling updates",
+    "summary": "Streams Ride Matcher is a ride marketplace backend in Java 21 and Spring Boot 3: a rider request service, a driver location service, and a Kafka Streams matching service. Every topic is keyed by city id across six partitions, so one city's events stay ordered while cities are processed in parallel. Live driver positions sit in Redis GEO with a heartbeat TTL; the matcher runs GEOSEARCH nearest-first inside a radius, claims each candidate with a Lua SET NX script, asks the ring for a larger candidate page when a full page was already taken, and only then widens the radius. Trips are written to MySQL shards chosen by floorMod(city_id, N) with Flyway migrations applied per shard. The three services run on Kubernetes with readiness gating and RollingUpdate at maxUnavailable 0.",
     "category": "Infra and Distributed",
     "stack": [
       "Java 21",
@@ -3826,13 +3826,13 @@ export const projects: ProjectData[] = [
       "Docker"
     ],
     "highlights": [
-      "Topics keyed by city id give ordering per city and parallelism across cities for free: the Streams topology processes each partition independently, and the load run shows 603 rides across two cities all matched, 0 unmatched",
-      "The driver claim is a single Redis Lua script doing SET NX on the driver key, so nearest-first matching under concurrent matchers cannot double-book; the radius expands ring by ring only when GEOSEARCH returns nobody claimable",
-      "CityShardRouter maps city_id to a shard with floorMod and each service holds one Hikari pool per shard with Flyway migrations applied to every shard at startup; GET /rides/stats counts rows per shard and shows city 2 on shard 0 and city 1 on shard 1",
-      "Measured on a 6 CPU VM: 603 matches per minute with match latency p50 14 ms, p95 53 ms, and the kind rollout proof changes an environment variable on all three Deployments mid-load and asserts zero HTTP errors from the generator",
+      "Measured run with 600 drivers across two cities and rides at 10 per second for 60 s: the load generator counted 603 rides submitted, and the matching service stats endpoint gave 603 matched, 0 unmatched, 603 matches per minute, p50 14 ms and p95 53 ms.",
+      "Shard distribution from counting rows in each MySQL shard: shard-0 holds city 2 with 301 trips and shard-1 holds city 1 with 302, which is exactly what floorMod(city_id, 2) predicts.",
+      "The driver claim is one Lua script (stale heartbeat, SET NX with a TTL, removal from the GEO set), so two Streams tasks racing for a driver cannot both win.",
+      "The kind end-to-end run changes an environment variable on all three Deployments under load and asserts zero HTTP errors from the generator, with a preStop sleep so endpoints drain before the JVM exits.",
       "v5.1.0 makes the Kubernetes rolling update proof prove what it claims: the load generator bounds its in-flight sends and counts what it skips, the three Deployments are replaced one at a time, and a coverage gate requires every replacement to sit inside sustained sampled load at ninety percent of the configured rate before the run may print PASS. The README carries the first run to pass it: three replacements of 31.7, 37.9 and 44.5 seconds adding up to its 114 second rolling update, 1804 of 1804 rides decided and matched, no error and no skipped send."
     ],
-    "demoConcept": "Two cities feed ride requests into Kafka partitions keyed by city, a Streams matcher pulls each one and claims the nearest driver from a Redis GEO index with expanding radius, trips settle into shard tanks by city, and a rolling-update panel replaces pods one at a time with the error counter pinned at 0",
+    "demoConcept": "Two cities feeding ride requests into Kafka partitions consumed by a Streams matcher, a nearest-first claim that grows its candidate page when the nearest drivers are taken, shard tanks filling by city, and a rolling-update panel whose error counter stays at 0.",
     "flagshipScore": 8,
     "isFlagship": true
   },
