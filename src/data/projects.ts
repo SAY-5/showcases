@@ -3763,7 +3763,7 @@ export const projects: ProjectData[] = [
     "language": "Python",
     "title": "Ride Dispatch Platform",
     "tagline": "Ride request and dispatch platform with a geohash-partitioned driver index, TTL expiry, and atomic nearest-driver claims",
-    "summary": "rideloop is three Python microservices behind a React rider map. driver_location ingests driver pings into a DynamoDB table partitioned by geohash cell (precision 5) with a TTL attribute, so answering who is near this point is a handful of key lookups on the center cell and its eight neighbors instead of a table scan. ride_request writes trips and their event trail to PostgreSQL. dispatch runs a matcher loop that locks requested trips with FOR UPDATE SKIP LOCKED, queries available drivers nearest first, claims one with a conditional update (status = available AND ttl > now), and doubles the search radius from 500 m up to 4 km when a ring has nobody claimable. Synthetic traffic drives it at about 600 rides a minute on a laptop.",
+    "summary": "Ride Dispatch Platform is three Python microservices behind a React rider map. driver_location ingests driver pings into a DynamoDB table partitioned by geohash cell (precision 5) with a TTL attribute, so a nearby query reads the center cell and its eight neighbors instead of scanning the table. ride_request keeps the trip lifecycle in PostgreSQL under Alembic migrations, from requested through matched, en route, arrived and in trip to completed, with a pickup ETA and per-cell surge pricing. dispatch locks requested trips with FOR UPDATE SKIP LOCKED, offers each to the nearest available driver it can claim with a conditional update, doubles the search radius from 500 m up to 4 km when a ring has nobody claimable, and rematches a trip whose offer is declined or times out. make demo drives the stack with 300 simulated drivers and rides at 10 per second for 60 seconds.",
     "category": "Infra and Distributed",
     "stack": [
       "Python",
@@ -3775,12 +3775,13 @@ export const projects: ProjectData[] = [
       "Docker"
     ],
     "highlights": [
-      "Geohash prefix as the partition key: a precision-5 cell is a bounding box, a 3 x 3 block of cells covers a 4.9 km radius from any point in the center cell, and nearby queries read exactly those nine partitions with a precision-6 subcell filter for small radii",
-      "Every ping sets ttl = now + POSITION_TTL_SECONDS and the read side treats it as authoritative: nearby queries and the claim condition both filter ttl > now, so a driver that stops reporting is invisible the second its TTL passes even though DynamoDB deletes lazily",
-      "Matching is a conditional claim, not a read-then-write: the dispatcher tries the nearest candidate with status = available AND ttl > now, moves to the next on failure, and doubles the radius (500 m, 1 km, 2 km, 4 km) when a ring is empty; concurrent matchers cannot double-book a driver",
-      "make demo seeds 300 drivers and submits 600 rides at 10 per second; every figure is read back from the running system: 600 of 600 matched, 601 matches per minute, p50 match latency 59 ms and p95 101 ms, and a silenced driver visible after 3 s and gone after the 20 s TTL"
+      "The read side treats the TTL attribute as authoritative: nearby queries and the claim condition both filter ttl > now, so a driver that stops reporting is invisible the second its TTL passes, and the first read of an expired row stamps it so each expiry is counted once although DynamoDB's own sweep may lag by minutes.",
+      "Matching is a conditional claim, not a read-then-write: the dispatcher tries the nearest candidate with status = available AND ttl > now and moves to the next on failure, so concurrent matchers cannot double-book a driver; against DynamoDB Local, 8- and 16-claim exclusivity tests and a six-matcher, twelve-trip race each require exactly one winning claim.",
+      "Requested trips are pulled with FOR UPDATE SKIP LOCKED, so several dispatch sweeps can run at once without double-matching a trip, and a declined or timed-out offer releases the claim with a conditional update and re-queues the trip without the driver who passed.",
+      "sim/replay.py replays a recorded ride stream through the matcher on a virtual clock, so the same file yields the same matches and latencies, and a fingerprint of the assignments turns a matcher change into a one-command regression check.",
+      "The documentation keeps two earlier make demo summaries as historical transcripts, unverified, with no retained run log, UTC run time or machine metadata: a pre-offer/decline one printing 601 matches per minute, p50 59 ms and p95 101 ms, and the v5 one printing 600 of 600 rides matched, 586 matches per minute, p50 62 ms and p95 1101 ms. Neither is a verified benchmark or a comparison with the browser model."
     ],
-    "demoConcept": "A live city map: drivers move across a geohash grid, you drop a pickup pin and watch the matcher read the nine surrounding cells, expand its radius ring by ring and claim the nearest driver atomically, while a silenced driver ages out at its TTL and the matches-per-minute counter settles on the measured 601",
+    "demoConcept": "A city map with drivers moving over a geohash grid: drop a pickup pin and watch the matcher read the surrounding cells, expand its radius ring by ring and claim the nearest available driver atomically, while a silenced driver ages out at its TTL and a 60 s load schedule runs on a virtual clock.",
     "flagshipScore": 8,
     "isFlagship": true
   },
