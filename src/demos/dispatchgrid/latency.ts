@@ -2,9 +2,9 @@
 // time between the rider service producing the request and the Streams task
 // claiming a driver: a shard insert, a produce, a poll, one GEOSEARCH and one
 // claim script per candidate tried. In the browser those take microseconds,
-// so the run charges a synthetic service time drawn from a log normal fitted
-// to the measured run (p50 14 ms, p95 53 ms) with a rare tail for group
-// rebalances and GC pauses.
+// so this illustrative model charges a synthetic log-normal service time plus
+// per-claim work and a rare tail. It is not fitted to the retained benchmark;
+// browser counters are not infrastructure measurements.
 import type { Rng } from './rng';
 
 export function drawMatchLatencyMs(rnd: Rng, claimsTried: number, extraQueueMs = 0): number {
