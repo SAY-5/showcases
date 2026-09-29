@@ -10,4 +10,5 @@ export type ProjectData = {
   demoConcept: string;
   flagshipScore: number;
   isFlagship: boolean;
+  demoUrl?: string;
 };

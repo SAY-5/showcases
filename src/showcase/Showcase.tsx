@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { ProjectData } from './types';
 import Arrow from './Arrow';
+import ExternalDemo from './ExternalDemo';
 import GitHubIcon from './GitHubIcon';
 import { portfolioWriteup, repoUrl } from './links';
 import { useDocumentTitle } from './useDocumentTitle';
@@ -14,7 +15,8 @@ type Neighbour = Pick<ProjectData, 'name' | 'title'>;
 
 type ShowcaseProps = {
   data: ProjectData;
-  Demo: ComponentType;
+  /** Absent when the demo is deployed elsewhere, at data.demoUrl. */
+  Demo?: ComponentType;
   /** 1-based catalog position in the dataset. */
   number: number;
   prev?: Neighbour | null;
@@ -93,10 +95,16 @@ export function Showcase({
         <section
           id="demo"
           className="detail__demo surface"
-          aria-label="Interactive demo"
+          aria-label={Demo ? 'Interactive demo' : 'Live demo'}
         >
           <div className="detail__demo-band">
-            <Demo />
+            {Demo ? (
+              <Demo />
+            ) : (
+              data.demoUrl && (
+                <ExternalDemo url={data.demoUrl} concept={data.demoConcept} />
+              )
+            )}
           </div>
         </section>
 

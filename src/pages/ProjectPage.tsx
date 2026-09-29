@@ -9,7 +9,7 @@ export function ProjectPage() {
   const data = projectByName[name];
   const Demo = demoByName[name];
 
-  if (!data || !Demo) {
+  if (!data || (!Demo && !data.demoUrl)) {
     return <NotFound />;
   }
 

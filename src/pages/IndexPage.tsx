@@ -20,6 +20,7 @@ const indexOf = new Map(projects.map((p, i) => [p.name, i + 1]));
 function matchesQuery(p: ProjectData, q: string) {
   if (!q) return true;
   const hay = [
+    p.name,
     p.title,
     p.tagline,
     p.summary,

@@ -19,7 +19,7 @@ const SIZE = 480;
 const EXTENT_M = 7000;
 const SCALE = SIZE / (2 * EXTENT_M);
 const SPEEDS = [1, 2, 4];
-const REAL = { matched: 603, perMinute: 603, p50: 14, p95: 53, p99: 271 };
+const REAL = { matched: 603, perMinute: 603, p50: 15, p95: 56, p99: 221 };
 const STEP_MS: Record<MatchTrace['kind'], number> = { search: 600, claim: 220, grow: 500, widen: 450, matched: 0, unmatched: 0 };
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -352,6 +352,12 @@ export default function DispatchgridDemo() {
             <div className="dg__progress" aria-hidden="true">
               <span style={{ width: `${loadProgress * 100}%` }} />
             </div>
+            <p className="demo__note">
+              Browser counters are modeled, not live infrastructure measurements.{' '}
+              <a href="https://github.com/SAY-5/dispatchgrid/blob/519539808b2a5e4f4fd6d2aec00dabbe793d6111/docs/demo-runs/1bc404c/loadgen-summary.json" target="_blank" rel="noopener noreferrer">
+                2026-09-28 measured run
+              </a>: {REAL.matched} matched in 60 s; {REAL.p99} ms p99.
+            </p>
             <div className="dg__stats">
               <div className="dg__stat dg__stat--hero">
                 <span className="dg__stat-label">matches per minute</span>

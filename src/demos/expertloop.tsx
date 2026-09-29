@@ -305,7 +305,7 @@ export default function ExpertloopDemo() {
           <div className="el__panel-head">
             Review policy, set {p.setId}
             <span className="el__panel-count">
-              requires role {p.roles.join(', ')}, {p.required} approval, {p.deadlineHours} h deadline set in the page
+              requires role {p.roles.join(', ')} set in the page, {p.required} approval, {p.deadlineHours} h deadline set in the page
             </span>
           </div>
           <div className="el__track" aria-label={`State ${p.state.replace('_', ' ')}`}>

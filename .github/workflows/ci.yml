@@ -14,6 +14,10 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm install
+      - run: npm ci --ignore-scripts
       - run: npm run lint
       - run: npm run build
+      - name: Search and measured-evidence browser regressions
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: npm run test:browser
