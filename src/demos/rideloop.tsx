@@ -19,10 +19,12 @@ import {
 // claims the nearest available driver with a conditional update, widening
 // the ring when nobody is claimable. The 60 s load run replays the demo
 // schedule (10 rides a second) against the same port and reports the same
-// figures the README prints.
+// kinds of figure as the demo summary, on a virtual clock. The README's
+// summaries are unverified historical transcripts, so nothing is compared
+// with them.
 
 const SIZE = 640;
-const REAL = { perMinute: 601, p50: 59, p95: 101, rate: 10, durationS: 60, ttl: 20 };
+const REAL = { rate: 10, durationS: 60, ttl: 20 };
 const SILENCED_DRIVER = 'drv-000';
 const SPEEDS = [1, 2, 4, 8];
 const STEP_DELAY: Record<MatchStep['kind'], number> = { query: 650, claim: 600, widen: 500 };
@@ -266,7 +268,7 @@ export default function RideloopDemo() {
         matcher reads the surrounding partitions, ranks by haversine, claims the
         nearest with a conditional update and doubles the ring when nobody is
         claimable. Silence a driver to watch it age out, then run the 60 s load
-        schedule and compare with the measured summary.
+        schedule on a virtual clock.
       </p>
 
       <div className="rl__grid">
@@ -472,17 +474,17 @@ export default function RideloopDemo() {
               <div className="rl__stat rl__stat--hero">
                 <span className="rl__stat-label">matches per minute</span>
                 <span className="rl__stat-val">{fmt(rateSoFar)}</span>
-                <span className="rl__stat-ref">measured {REAL.perMinute}</span>
+                <span className="rl__stat-ref">{REAL.rate} rides/s on a virtual clock</span>
               </div>
               <div className="rl__stat">
                 <span className="rl__stat-label">match latency p50</span>
                 <span className="rl__stat-val">{fmt(p50)}<small>ms</small></span>
-                <span className="rl__stat-ref">measured {REAL.p50} ms</span>
+                <span className="rl__stat-ref">modelled service time</span>
               </div>
               <div className="rl__stat">
                 <span className="rl__stat-label">p95</span>
                 <span className="rl__stat-val">{fmt(p95)}<small>ms</small></span>
-                <span className="rl__stat-ref">measured {REAL.p95} ms</span>
+                <span className="rl__stat-ref">modelled service time</span>
               </div>
               <div className="rl__stat">
                 <span className="rl__stat-label">matched / submitted</span>
@@ -538,8 +540,8 @@ export default function RideloopDemo() {
               </span>
               <span className="rl__verdict-text">
                 The submission rate is the ceiling, not the matcher: p50 {fmt(p50)} ms, p95 {fmt(p95)} ms
-                across {world.sweeps} sweeps. The README run reports {REAL.perMinute} per minute with p50 {REAL.p50} ms
-                and p95 {REAL.p95} ms from the running services.
+                across {world.sweeps} sweeps, on a virtual clock. The README&apos;s demo summaries are historical
+                transcripts without a retained run log, so this run is not compared with them.
               </span>
             </motion.div>
           )}
