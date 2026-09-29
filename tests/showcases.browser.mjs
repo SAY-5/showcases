@@ -98,3 +98,60 @@ test('DispatchGrid distinguishes modeled counters from the retained measured rec
     assert.match(await panel.innerText(), /Browser counters are modeled/);
   });
 });
+
+
+for (const width of [1440, 390]) {
+  for (const [project, selector] of [
+    ['failsafe', '.fs__recent > .fs__empty'],
+    ['ledgermesh', '.lm__orders > .lm__empty, .lm__log > .lm__empty'],
+  ]) {
+    test(project + ' empty-state prose is readable at ' + width + 'px', async () => {
+      await withPage(width, async (page) => {
+        await page.goto(origin + '/' + project);
+        await page.locator(selector).first().waitFor();
+        const paragraphs = await page.locator(selector).evaluateAll((elements) => elements.map((element) => {
+          const range = document.createRange();
+          range.selectNodeContents(element);
+          return { text: element.textContent, lines: range.getClientRects().length };
+        }));
+        assert.equal(paragraphs.length, project === 'failsafe' ? 1 : 2);
+        for (const paragraph of paragraphs) {
+          assert.ok(paragraph.lines <= 3, paragraph.text + ' must not wrap into a narrow data column (' + paragraph.lines + ' lines)');
+        }
+      });
+    });
+  }
+
+  test('FailSafe selected replica and token count retain readable contrast at ' + width + 'px', async () => {
+    await withPage(width, async (page) => {
+      await page.goto(origin + '/failsafe');
+      await page.locator('.fs__bucket-lab').waitFor();
+      const samples = await page.evaluate(() => {
+        const color = (value) => value.match(/[\d.]+/g).map(Number);
+        const label = getComputedStyle(document.querySelector('.fs__bucket-lab'));
+        const chip = getComputedStyle(document.querySelector('.fs__chip--on'));
+        const ownBackground = color(label.backgroundColor);
+        const fill = getComputedStyle(document.querySelector('.fs__bucket-fill'));
+        const backgrounds = ownBackground[3] === 0
+          ? [getComputedStyle(document.querySelector('.fs__bucket')).backgroundColor,
+            ...fill.backgroundImage.match(/rgba?\([^)]+\)/g)].map(color)
+          : [ownBackground];
+        return [
+          { label: 'selected replica', foreground: color(chip.color), backgrounds: [color(chip.backgroundColor)] },
+          { label: 'token count across empty/full fill', foreground: color(label.color), backgrounds },
+        ];
+      });
+      const luminance = (rgb) => rgb.slice(0, 3).map(v => {
+        const c = v / 255;
+        return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+      }).reduce((sum, c, index) => sum + c * [0.2126, 0.7152, 0.0722][index], 0);
+      for (const sample of samples) {
+        for (const background of sample.backgrounds) {
+          const values = [luminance(sample.foreground), luminance(background)].sort((a, b) => b - a);
+          const ratio = (values[0] + 0.05) / (values[1] + 0.05);
+          assert.ok(ratio >= 4.5, sample.label + ' contrast must be at least 4.5:1; got ' + ratio.toFixed(2));
+        }
+      }
+    });
+  });
+}
