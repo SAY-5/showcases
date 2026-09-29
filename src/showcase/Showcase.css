@@ -242,3 +242,39 @@
     padding: 22px 20px 18px;
   }
 }
+
+/* A demo deployed from its own repository: described here, opened there. */
+.xdemo {
+  display: grid;
+  gap: 18px;
+  max-width: 72ch;
+  padding-block: clamp(4px, 1.5vw, 16px);
+}
+.xdemo__kicker {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lime);
+}
+.xdemo__concept {
+  font-size: clamp(17px, 1.8vw, 21px);
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+}
+.xdemo__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 22px;
+}
+.xdemo__host {
+  font-size: 13px;
+  color: var(--text-faint);
+  overflow-wrap: anywhere;
+}
+.xdemo__note {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-faint);
+}
