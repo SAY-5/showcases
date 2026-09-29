@@ -3803,7 +3803,8 @@ export const projects: ProjectData[] = [
       "Input validation runs before any tensor exists: types, ranges, known zones, finite floats, no unknown fields; rejections return 422 with a per-field reason and increment a rejection counter labeled by that reason",
       "Shadow inference runs the candidate on every request next to the primary and records the divergence, so a version can be judged on live traffic before it answers a single client: the demo run reports n=1000, mean |d| 2.29 min, p95 |d| 6.35 min",
       "The version swap is a pointer replacement under a lock after the candidate is loaded and warmed off the request path; the 200 rps load test shows 4000 of 4000 requests succeeded, 0 dropped, with the per-second split flipping from v1 to v2 inside one second",
-      "Every forward pass is padded to a fixed row count, so micro-batching changes throughput but never the answer, and the offline replay harness reproduces logged answers bit for bit (checked 300, mismatches 0)"
+      "Every forward pass is padded to a fixed row count, so micro-batching changes throughput but never the answer, and the offline replay harness reproduces logged answers bit for bit (checked 300, mismatches 0)",
+      "v5.0.1 makes two reproducibility tests hold across CPU architectures: regenerated on the x86-64 CI runner, the replay fixture records distance_km 8.5 where the committed file has 8.499, so the comparison now allows a tolerance declared per field (one unit in the last place the code rounds to, 0.02 for the two eta fields) and refuses a decimal with no declared tolerance; the model and its artifacts are unchanged, the demo moves to Vite 7.3.6 with npm audit at 0 vulnerabilities, and 116 tests pass on the x86-64 runner and on an arm64 Mac."
     ],
     "demoConcept": "A request builder that shows exactly which field a 422 is blaming, a shadow readout that scores v2 against v1 on the same inputs, and a live request stream where pressing Promote flips the serving version from v1 to v2 in a single tick while the dropped counter stays pinned at 0",
     "flagshipScore": 8,
@@ -3826,11 +3827,12 @@ export const projects: ProjectData[] = [
       "Docker"
     ],
     "highlights": [
-      "Measured run with 600 drivers across two cities and rides at 10 per second for 60 s: the load generator counted 603 rides submitted, and the matching service stats endpoint gave 603 matched, 0 unmatched, 603 matches per minute, p50 14 ms and p95 53 ms.",
+      "Measured make demo run at commit 1bc404c (2026-09-28, 18:12:37 to 18:14:17 UTC, a Darwin arm64 host with a 6 CPU, 7.7 GiB Docker VM), started once a gate had read a host load average below 8 and a Docker VM load average below 3 twice in a row: 600 drivers across two cities and rides at 10 per second for 60 s submitted 603 rides with no errors, retries or skips, 603 of 603 trip rows were decided and matched, and match latency was p50 15 ms, p95 56 ms and p99 221 ms.",
       "Shard distribution from counting rows in each MySQL shard: shard-0 holds city 2 with 301 trips and shard-1 holds city 1 with 302, which is exactly what floorMod(city_id, 2) predicts.",
       "The driver claim is one Lua script (stale heartbeat, SET NX with a TTL, removal from the GEO set), so two Streams tasks racing for a driver cannot both win.",
       "The kind end-to-end run changes an environment variable on all three Deployments under load and asserts zero HTTP errors from the generator, with a preStop sleep so endpoints drain before the JVM exits.",
-      "v5.1.0 makes the Kubernetes rolling update proof prove what it claims: the load generator bounds its in-flight sends and counts what it skips, the three Deployments are replaced one at a time, and a coverage gate requires every replacement to sit inside sustained sampled load at ninety percent of the configured rate before the run may print PASS. The README carries the first run to pass it: three replacements of 31.7, 37.9 and 44.5 seconds adding up to its 114 second rolling update, 1804 of 1804 rides decided and matched, no error and no skipped send."
+      "v5.1.0 makes the Kubernetes rolling update proof prove what it claims: the load generator bounds its in-flight sends and counts what it skips, the three Deployments are replaced one at a time, and a coverage gate requires every replacement to sit inside sustained sampled load at ninety percent of the configured rate before the run may print PASS. The README carries the first run to pass it: three replacements of 31.7, 37.9 and 44.5 seconds adding up to its 114 second rolling update, 1804 of 1804 rides decided and matched, no error and no skipped send.",
+      "v5.2.0 changes how the compose demo's figures are produced and quoted, with the services untouched: the load generator's summary opens with the commit, machine, UTC window and load averages behind it, make demo writes a run record beside it, a gate script run first waits for a host load average below 8 and a Docker VM load average below 3, and the README block is rendered from the committed run or refused, with CI failing when the block no longer matches that run; CI run 36472860778 at the release commit passes 63 unit and 14 Testcontainers integration tests and the kind rolling update under load."
     ],
     "demoConcept": "Two cities feeding ride requests into Kafka partitions consumed by a Streams matcher, a nearest-first claim that grows its candidate page when the nearest drivers are taken, shard tanks filling by city, and a rolling-update panel whose error counter stays at 0.",
     "flagshipScore": 8,
@@ -3856,7 +3858,8 @@ export const projects: ProjectData[] = [
       "Token buckets refill continuously rather than per tick, so a client at exactly its rate never sees a 429 and a burst above capacity gets an exact Retry-After computed from the deficit",
       "A breaker per replica moves closed to open on a failure-rate window or a run of consecutive failures, waits a cooldown, and allows a bounded number of half-open probes before closing again, so a dead replica stops receiving traffic instead of consuming retry budget",
       "Retries with backoff and jitter apply only to idempotent requests, and failover picks a different healthy replica for each attempt; an in-process test drives 1200 requests while one replica is killed and another hangs",
-      "make chaos drives 150 rps for 45 s while SIGKILLing upstream containers: 6751 requests, 6751 successes, 4 kills, 5 retries, 5 failovers, and 0 client-visible failures, with the same assertion passing on a kind cluster across 4 pod kills"
+      "make chaos drives 150 rps for 45 s while SIGKILLing upstream containers: 6751 requests, 6751 successes, 4 kills, 5 retries, 5 failovers, and 0 client-visible failures, with the same assertion passing on a kind cluster across 4 pod kills",
+      "v5.0.1 moves the browser demo from Vite 5.4.21 to 7.3.6, which drops the esbuild 0.21.5 that Vite 5 carried, so npm audit over the demo's lockfile goes from two vulnerable packages (esbuild moderate, Vite high) to 0; a new CI web job type-checks, self-checks and bundles the demo on every push, and the gateway itself is unchanged, with 108 tests passing and both chaos suites killing replicas under load with 0 client-visible failures."
     ],
     "demoConcept": "A gateway fanning requests out to three replicas: watch the token bucket drain and refill, step a breaker through closed, open, and half-open, then start a chaos run that kills replicas under load while the retry and failover counters climb and client failures stay at 0",
     "flagshipScore": 8,
@@ -3882,7 +3885,8 @@ export const projects: ProjectData[] = [
       "The correction loop is measured, not asserted: support triage goes 12.5% to 87.5% to 100% pass rate across three prompt versions and incident communications 12.5% to 100%, over 64 runs and 308 tool calls.",
       "A promotion gate blocks any version that still contains a forbidden action, and the audit trail records the exact approve, edit, reject, block and promote sequence with the actor for each.",
       "The regression guard replays every historical failing scenario against a new version and fails the run only when a previously passing scenario breaks, so new-scenario failures do not block a release.",
-      "v5.0.0 adds an operations summary, a per-run JSON artifact, and tool-call count and latency metrics; 44 tests pass with two skips that require a live API key or LocalStack."
+      "v5.0.0 adds an operations summary, a per-run JSON artifact, and tool-call count and latency metrics; 44 tests pass with two skips that require a live API key or LocalStack.",
+      "v6.0.0 changes the stored layout, with no migration from 5.0.0: each procedure's prompt versions, reports, traces, grades, scenario bank, proposals and promotions sit under one prefix in a run store that is a directory or S3, so the deployed runner loads the promoted version from the bucket and refuses a procedure with nothing promoted, sending the message to the dead-letter queue instead of running an unreviewed prompt; live mode requires real Jira and Slack settings unless the stand-ins are asked for and records which it used, and 48 tests pass with 2 skipped by design, the S3 store and handler tests against LocalStack in CI."
     ],
     "demoConcept": "A transcript viewer stepping through one scenario's tool calls beside an evaluation grid where every scenario flips red to green across prompt versions, with the corrections that caused each change.",
     "flagshipScore": 9,
@@ -3968,7 +3972,8 @@ export const projects: ProjectData[] = [
       "Forty experts running concurrently against the live API produced zero tag mismatches and 40 of 40 blocked double-assignment attempts, with expired leases reclaimed back into the queue.",
       "Hidden attention checks paused two careless graders mid-run and withheld their payouts from the closed statement, rather than discovering the problem after delivery.",
       "Calibration moves an expert between tiers on rolling agreement with reviewers and golden answers, with a hysteresis band proven not to flap when a score sits between the promote and demote thresholds.",
-      "Consensus tasks that disagree beyond tolerance route to a senior reviewer whose decision becomes the delivered grade, and the delivery carries exactly one row per task at 449 rows for 449 approved tasks."
+      "Consensus tasks that disagree beyond tolerance route to a senior reviewer whose decision becomes the delivered grade, and the delivery carries exactly one row per task at 449 rows for 449 approved tasks.",
+      "v6.0.0 breaks two 5.0.0 contracts (the dataset export moves to POST /deliveries and experts no longer carry an hourly rate): an approval with no rate for the expert's tier now answers 422 instead of 500, each serve's attention check is decided by a keyed sha256 instead of a countable cadence, psycopg no longer prepares statements on the server, which had failed 2 of 120 requests after a schema reset, and the browser page labels its counters a simulated run; 74 tests pass against PostgreSQL 16 in CI."
     ],
     "demoConcept": "A claim race where five workers hit one task and four get rejected, beside an attention-check gauge that flips an expert to paused and pulls their money out of the statement.",
     "flagshipScore": 9,
@@ -4057,7 +4062,7 @@ export const projects: ProjectData[] = [
       "Ownership weighting multiplies fractions along the path, so a two-hop chain at 75 and 80 percent yields 60 percent of the position value while the unweighted answer is unchanged.",
       "Shape validation caught a real data defect: a manager's subsidiary-listing accession collided with its own first quarterly filing, so quarterly sequences now start above the collision range.",
       "A parity test proves the inference-derived answers match the explicit bounded-path query exactly, and a cost guard returns 422 rather than letting an unbounded path or an over-deep traversal run.",
-      "v5.1.0 is a correctness and provenance pass with no new endpoints: the neighbour query ranks lineage above holdings so a row limit cannot hide a corporate tree, /exposure/concentration is bounded in the store instead of returning a row per issuer held, the cost guard runs once per template rather than over every rendered query, and the demo page and the README both quote a committed summary file that records the commit, host and timestamp behind each figure."
+      "v5.1.0 is a correctness and provenance pass with no new endpoints: the neighbour query ranks lineage above holdings so a row limit cannot hide a corporate tree, /exposure/concentration is bounded in the store instead of returning a row per issuer held, the cost guard runs once per template rather than over every rendered query, and the demo page and the README both quote a committed summary file that records the commit, host and timestamp behind each figure; the v5.1.1 patch changes only the browser demo, whose graph now places each label where it clears the others and whose lists name every node an expansion draws, where the 5.1.0 list left 16 of 49 unnamed after one expansion, with its self check up from 104 to 135 assertions."
     ],
     "demoConcept": "Pick a fund family, an issuer and a reporting period, then watch the path chips assemble through subsidiaries and affiliates while the three exposure legs, the ownership-weighted total and the SPARQL the API would send update, each total checked against the README's recorded run.",
     "flagshipScore": 9,
@@ -4084,11 +4089,68 @@ export const projects: ProjectData[] = [
       "A 300-task run with 60 duplicate resubmissions delivered every unique task exactly once, retried 60 rate-limited calls, dead-lettered 10 hard failures and replayed all 10 to delivered, leaving every queue at zero.",
       "Adding a connector is one YAML file: Terraform plans 8 new resources for it, including its own dead-letter and quarantine queues, with no module changes.",
       "A 4 second breaker pause outlasts the 1 second visibility timeout, so held messages have their visibility extended; the test proving there is no double delivery fails when that extension is removed.",
-      "Payloads that fail schema mapping go to a quarantine queue separate from the dead-letter queue, a versioned registry refuses breaking schema changes, and redrive stops at the depth it started from so it cannot loop."
+      "Payloads that fail schema mapping go to a quarantine queue separate from the dead-letter queue, a versioned registry refuses breaking schema changes, and redrive stops at the depth it started from so it cannot loop.",
+      "v6.0.0 changes four things a caller could rely on, among them a Worker that now requires its quarantine queue, and fixes a half-open breaker that a duplicate message could take as its probe and then turn away every later message without calling the target again: the probe is now a lease only a delivery attempt holds, a malformed queue body no longer stops the worker, and make demo submits 302 tasks with two schema-rejected payloads held in quarantine; 185 unit tests at 86.98 percent line coverage, 32 LocalStack tests, 3 terraform tests and 49 web self-check assertions pass in CI run 36468470785."
     ],
     "demoConcept": "Tasks flowing through three connector queues where a rate-limited target paces its token bucket, a failing webhook trips the breaker and fills the dead-letter queue, and one new YAML file turns into a Terraform plan.",
     "flagshipScore": 9,
     "isFlagship": true
+  },
+  {
+    "name": "rankfault",
+    "language": "Python",
+    "title": "Collective Fault Injection Harness",
+    "tagline": "Distributed fault-injection harness with an interactive replay of retained CPU/Gloo runs",
+    "summary": "A fault injection harness for multi-rank PyTorch jobs that issue torch.distributed collectives. Every rank runs as its own process, or in its own container on a bridge network when the fault is on a link, and the harness injects the fault while a named collective is in flight: a rank killed or frozen, a link delayed or cut with netem or iptables, or one rank issuing its collectives out of order. Each run gets one of seven outcomes, from completed and recovered through failed fast and failed at the collective timeout to stalled, by rules committed before the first job ran, and any fault can be crossed with detection settings (a collective timeout, DETAIL debug checks, a monitored barrier guard, a Work.wait timeout) and with a torchrun restart path. Every measured result comes from the gloo backend on CPU; the nccl backend can be selected but has never been run. The replay page reads the committed matrix artifact and draws each repeat rank by rank; it is a recorded-run explorer, not a live faulting cluster, and launches no process group.",
+    "category": "Infra and Distributed",
+    "stack": [
+      "Python",
+      "PyTorch",
+      "Gloo",
+      "Docker",
+      "TypeScript",
+      "React",
+      "Vite"
+    ],
+    "highlights": [
+      "The registered matrix, 38 cells repeated three times, ran as 114 runs in one manually dispatched CI run on Linux (4 CPUs, torch 2.14.0+cpu, gloo on CPU): 0 stalled, 0 harness errors and 0 completed with a wrong result. NCCL was never run, so none of these figures describes it.",
+      "21 of the 38 cells (63 runs) failed only at the 10 s collective timeout, among them every freeze and link cut under the default setting, under DETAIL and under the monitored barrier guard; 12 cells failed fast, 3 completed and 2 recovered. The wait setting turned all 4 of its cells into fast failures only because its 1.5 s Work.wait timeout is shorter than the 2 s window a fast failure is judged by.",
+      "All 18 kill runs failed fast, yet no survivor noticed the victim's death while it waited for the held rank: in 15 of them the first survivor failed 0.451 to 0.452 s after the fault, within 2 ms of the held rank entering the collective, although the kill command had returned 0.177 to 0.208 s after the fault.",
+      "Under torchrun a fresh rendezvous store recovered the job in 6 of 6 runs, a kill and a freeze alike, while the default shared store did not recover in 3 of 3. The shared-store failure is a race rather than a certainty: the restarted attempt reuses the first attempt's store port, and one later CI run of the restart integration test did recover.",
+      "The replay page reads every event of the 114 runs from the committed artifact, shows only what had been recorded by the playhead during a replay, and keeps the cell and repeat in the URL; a CI self check compares each figure it shows with the artifact and with the README."
+    ],
+    "demoConcept": "Explore the retained experiment matrix, choose a repeat, and inspect its recorded timeline and classification with source-linked evidence.",
+    "flagshipScore": 8,
+    "isFlagship": false,
+    "demoUrl": "https://say5-rankfault.vercel.app/"
+  },
+  {
+    "name": "kernelcheck",
+    "language": "C++",
+    "title": "CUDA Kernel Fuzz Tester",
+    "tagline": "CPU execution-model fuzzing for six CUDA kernels, with reproducible seeded-mutation shrink traces",
+    "summary": "Six CUDA C++ kernels of the kind a model runtime needs (a tiled transpose, row softmax, RMS normalisation, a tiled GEMM, a row sum and an inclusive row scan) and a CPU execution model that runs the same kernel sources with CUDA's thread, barrier, warp and shared memory semantics, reporting threads that do not all reach the same barrier call, warp masks that do not match the lanes executing them, and misaligned vector accesses. A differential fuzzer runs each case against reference implementations inside guarded memory, checks it with a NaN canary, a finite fill and a tight page-fenced placement, and shrinks a failure to a minimal case. The kernels compile with nvcc in CI but have never run on a GPU: every result comes from the CPU execution model, and nothing here measures performance. A browser page runs a TypeScript port of the model, the kernels, the seeded mutants and the fuzzer in a Web Worker, checked against fixtures the C++ build writes; it does not execute GPU kernels.",
+    "category": "Systems and C++",
+    "stack": [
+      "C++",
+      "CUDA",
+      "Python",
+      "TypeScript",
+      "React",
+      "Vite",
+      "Web Workers"
+    ],
+    "highlights": [
+      "The pre-registered campaign c1 ran 60000 cases against the unmodified v1.0.0 kernels under the CPU execution model with 0 failures and 0 distinct minimal cases; the largest ratio of error to bound among passing elements was 0.396 for gemm and 0.219 for softmax.",
+      "A pre-registered evaluation seeded 171 one-site mutants into copies of the v1.0.0 kernels, none of them in the kernels themselves: 159 are real defects and 12 equivalent or contract-equivalent. The fuzzer detected 144 of the 159 and the unit tests 130, and every miss is classified with its argument.",
+      "After v4.0.0 fixed five kinds of blind spot (a finite fill of 2^100, a tight page-fenced placement, tall shapes, data far below zero and masked rows of -inf), the rerun on the same 171 mutants detected 156 of the 159. That figure is in-sample, since the fixes were written for those mutants' misses; the 3 left need dimensions past 2^31 - 32, which no campaign reaches.",
+      "The browser page lets a reader pick a kernel and a seeded mutant, labelled as the planted defect it is, run campaign c2's cases in the order the rerun ran them, and follow the first failing case as it shrinks beside the trace the C++ runner recorded; a shrink that exhausts its budget is labelled best-found.",
+      "v5.0.1 corrects figures an independent verification of 5.0.0 found wrong, with the kernels unchanged: three mutants argued equivalent are real defects past the fuzzer's shape limits, so the evaluation counts 159 real defects, the rerun's unit tests detect 131 under the pre-registered rule, the rerun's 156 of 159 is stated as in-sample wherever it appears, and the documents narrow what the model reports; the release commit carries 219 kernel and model tests, 173 fuzzer tests and 928 web self checks."
+    ],
+    "demoConcept": "Choose a kernel and seeded mutation, run the CPU model, inspect the failing case and shrink steps, and compare the result with committed evidence.",
+    "flagshipScore": 8,
+    "isFlagship": false,
+    "demoUrl": "https://say5-kernelcheck.vercel.app/"
   },
 ];
 
