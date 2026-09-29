@@ -42,7 +42,40 @@ async function withPage(width, run) {
   }
 }
 
-for (const width of [1440, 390]) {
+async function assertNoPageOverflow(page) {
+  const layout = await page.evaluate(() => {
+    const root = document.documentElement;
+    const describe = (element) => {
+      const style = getComputedStyle(element);
+      const bounds = element.getBoundingClientRect();
+      return {
+        element: `${element.tagName.toLowerCase()}.${element.className}`,
+        left: bounds.left, right: bounds.right, width: bounds.width,
+        minWidth: style.minWidth, font: style.font, transform: style.transform,
+        overflowX: style.overflowX, gridColumns: style.gridTemplateColumns,
+      };
+    };
+    return {
+      viewport: innerWidth, client: root.clientWidth, scroll: root.scrollWidth,
+      fonts: document.fonts.status, browser: navigator.userAgent,
+      search: [...document.querySelectorAll('.work__controls, .work__search, .work__input')].map(describe),
+      outside: [...document.querySelectorAll('body *')].filter(element => {
+        const bounds = element.getBoundingClientRect();
+        return bounds.right > innerWidth + 1 || bounds.left < -1;
+      }).map(element => ({
+        ...describe(element),
+        clippingAncestors: [...(function* () {
+          for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+            if (getComputedStyle(parent).overflowX !== 'visible') yield describe(parent);
+          }
+        })()],
+      })).filter(element => element.clippingAncestors.length === 0).slice(0, 12),
+    };
+  });
+  assert.ok(layout.scroll <= layout.viewport + 1, JSON.stringify(layout, null, 2));
+}
+
+for (const width of [1440, 390, 320]) {
   for (const [name, title] of [
     ['rankfault', 'Collective Fault Injection Harness'],
     ['kernelcheck', 'CUDA Kernel Fuzz Tester'],
@@ -59,10 +92,31 @@ for (const width of [1440, 390]) {
         await page.reload();
         await input.waitFor();
         assert.equal(await row.count(), 1);
-        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
+        await assertNoPageOverflow(page);
       });
     });
   }
+}
+
+for (const name of ['rankfault', 'kernelcheck']) {
+  test(`${name} search fits a mobile panel with enlarged input text`, async () => {
+    await withPage(390, async (page) => {
+      await page.goto(`${origin}/?q=${name}`);
+      const input = page.getByRole('searchbox', { name: 'Search showcases' });
+      await input.waitFor();
+      await page.evaluate(() => document.fonts.ready);
+      await input.evaluate(element => {
+        element.style.fontSize = `${parseFloat(getComputedStyle(element).fontSize) * 1.25}px`;
+      });
+      const bounds = await page.locator('.work__search').evaluate(element => ({
+        field: element.getBoundingClientRect().width,
+        panel: element.parentElement.getBoundingClientRect().width,
+      }));
+      assert.ok(bounds.field <= bounds.panel + 1, JSON.stringify(bounds));
+      await assertNoPageOverflow(page);
+      assert.equal(await page.locator(`.rows a[href="/${name}"]`).count(), 1);
+    });
+  });
 }
 
 test('repository search preserves AND filters, counts and sort when edited', async () => {
