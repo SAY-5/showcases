@@ -24,7 +24,10 @@ src/main.tsx         app entry, mounts the router and global styles
 - any other path renders a not-found page that links back to `/`.
 
 Demos are loaded with `import.meta.glob('./demos/*.tsx', { eager: true })`,
-keyed by file basename, which matches the project name in the dataset.
+keyed by file basename, which matches the project name in the dataset. An
+entry with no demo file but a `demoUrl` (a demo deployed from its own
+repository) gets a panel that describes the demo and links to that address;
+the page does not embed it.
 
 ## Develop
 
